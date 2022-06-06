@@ -6,7 +6,6 @@
 #include <string>
 #include "lib.h"
 
-
 using std::string;
 
 Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
