@@ -31,12 +31,15 @@ private:
     bool debug = false;
     std::string input;
     std::string output;
-    std::function<void(FeedBack)> callback = nullptr;
+    std::function<void(FeedBack, std::any)> callback = nullptr;
+    std::any data;
 public:
     [[nodiscard]] static json probe(std::string& file);
     [[nodiscard]] static std::string make_thumbnail(std::string file,const json& info);
 
-    void run();
+    static bool heave_hwaccel(std::string& name);
+
+    int run();
 
     [[nodiscard]] bool isDebug() const;
 
@@ -50,9 +53,9 @@ public:
 
     void setOutput(const std::string output);
 
-    [[nodiscard]] const std::function<void(FeedBack)> &getCallback() const;
+    [[nodiscard]] const std::function<void(FeedBack, std::any)> &getCallback() const;
 
-    void setCallback(const std::function<void(FeedBack)> &callback);
+    void setCallback(const std::function<void(FeedBack, std::any)> &callback, std::any data);
 
     void addArg(std::string arg);
     void addPreArg(std::string arg);

@@ -8,18 +8,53 @@
 #include <gtkmm.h>
 #include <nlohmann/json.hpp>
 #include <iostream>
+#include <vector>
+#include <thread>
+#include <memory>
 
 using nlohmann::json;
 
 class Entry : public Gtk::ListBoxRow {
 private:
+    std::string path;
+    json info;
+
+    std::vector<Gtk::CheckButton*> video_streams;
+    std::vector<Gtk::CheckButton*> video_audio;
+
+    Gtk::ProgressBar* progressBar;
+    Gtk::Entry* file_name_entry;
+    Gtk::Image* status_image;
+
+    std::unique_ptr<std::thread> process_thread = nullptr;
+
+    float duration;
+
     void remove_self();
+
+    void process(const std::string codec, const std::string hw_codec, const std::string container);
 public:
     Entry(std::string& path, json info);
 
     ~Entry() override {
         std::cout << "test destroy" << std::endl;
+        if(process_thread != nullptr)
+            process_thread->join();
     }
+
+    void start(const std::string& codec, const std::string& hw_codec, const std::string& container);
+
+//    const std::string &getFileName() const;
+
+    const std::vector<Gtk::CheckButton *> &getVideoStreams() const;
+
+    const std::vector<Gtk::CheckButton *> &getVideoAudio() const;
+
+    Gtk::ProgressBar *getProgressBar() const;
+
+    float getDuration() const;
+
+    Gtk::Image *getStatusImage() const;
 };
 
 

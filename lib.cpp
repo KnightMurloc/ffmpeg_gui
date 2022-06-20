@@ -7,6 +7,7 @@ using std::stringstream;
 using std::string;
 using std::filesystem::temp_directory_path;
 using std::filesystem::path;
+using std::any;
 
 json FFmpeg::probe(string& file) {
 
@@ -44,7 +45,7 @@ float convertBitrate(stringstream& stream){
     return bitrate;
 }
 
-void FFmpeg::run() {
+int FFmpeg::run() {
     string cmd = "ffmpeg -progress - -y ";
     for(const auto& arg : preArgs){
         cmd += " " + arg;
@@ -62,15 +63,90 @@ void FFmpeg::run() {
 //    cmd += " | awk -F \"=\" '{print $2}'";
     std::cout << cmd << std::endl;
     std::array<char, 256> buffer{};
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    FILE* pipe = popen(cmd.c_str(), "r");
 
     if (!pipe) {
         throw std::runtime_error("popen() failed!");
     }
     if(this->callback != nullptr) {
         stringstream tmp;
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-            std::cout << "test" << std::endl;
+        while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
+//            std::cout << "test" << std::endl;
+
+            unsigned int frame;
+            sscanf(buffer.data(),"frame=%u",&frame);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            float fps;
+            sscanf(buffer.data(),"fps=%f",&fps);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            float stream_0_0_q;
+            sscanf(buffer.data(),"stream_0_0_q=%f",&stream_0_0_q);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            float bitrate;
+            char size;
+            sscanf(buffer.data(),"bitrate=%f%c",&stream_0_0_q,&size);
+            fgets(buffer.data(), buffer.size(), pipe);
+            switch (size) {
+                case 'k':
+                    bitrate *= 1024;
+                    break;
+                case 'm':
+                    bitrate *= 1024 * 1024;
+                    break;
+            }
+
+            unsigned long total_size;
+            sscanf(buffer.data(),"total_size=%lu",&total_size);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            unsigned long out_time_us;
+            sscanf(buffer.data(),"out_time_us=%lu",&out_time_us);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            unsigned long out_time_ms;
+            sscanf(buffer.data(),"out_time_ms=%lu",&out_time_ms);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            std::string out_time(64,'\0');
+            sscanf(buffer.data(),"out_time_ms=%s",out_time.data());
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            unsigned long dup_frames;
+            sscanf(buffer.data(),"dup_frames=%lu",&dup_frames);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            unsigned long drop_frames;
+//            std::cout << buffer.data() << std::endl;
+            sscanf(buffer.data(),"dup_frames=%lu",&drop_frames);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            float speed;
+//            std::cout << buffer.data() << std::endl;
+            sscanf(buffer.data(),"speed=%fx",&speed);
+            fgets(buffer.data(), buffer.size(), pipe);
+
+            string status(16,'\0');
+            sscanf(buffer.data(),"progress=%s",status.data());
+//            std::cout << status << std::endl;
+//            std::cout << (strcmp(status.c_str(),"end") == 0) << std::endl;
+
+            callback(FeedBack(
+                    frame,
+                    fps,
+                    stream_0_0_q,
+                    bitrate,
+                    total_size,
+                    out_time_us,
+                    out_time_ms,
+                    out_time,
+                    dup_frames,
+                    drop_frames,
+                    speed,
+                    (strcmp(status.c_str(),"end") == 0) ? FFmpegStatus::END : FFmpegStatus::CONTINUE
+                    ), data);
 //        tmp << buffer.data(); //frame
 //
 //        fgets(buffer.data(), buffer.size(), pipe.get());
@@ -146,6 +222,8 @@ void FFmpeg::run() {
 //                ));
         }
     }
+
+    return pclose(pipe);
 }
 
 bool FFmpeg::isDebug() const {
@@ -172,12 +250,13 @@ void FFmpeg::setOutput(const string output) {
     FFmpeg::output = output;
 }
 
-const std::function<void(FeedBack)> &FFmpeg::getCallback() const {
+const std::function<void(FeedBack, std::any)> &FFmpeg::getCallback() const {
     return callback;
 }
 
-void FFmpeg::setCallback(const std::function<void(FeedBack)> &callback) {
+void FFmpeg::setCallback(const std::function<void(FeedBack, std::any)> &callback, any data) {
     FFmpeg::callback = callback;
+    this->data = data;
 }
 
 void FFmpeg::addArg(string arg) {
@@ -209,6 +288,15 @@ std::string FFmpeg::make_thumbnail(std::string file,const json& info) {
 
 void FFmpeg::addPreArg(std::string arg) {
     preArgs.push_back(arg);
+}
+
+bool FFmpeg::heave_hwaccel(std::string& name) {
+    return name == "h264" ||
+           name == "hevc" ||
+           name == "mjpeg" ||
+           name == "mpeg2" ||
+           name == "vp8" ||
+           name == "vp9";
 }
 
 
