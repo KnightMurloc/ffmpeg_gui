@@ -7,12 +7,14 @@
 #include "Entry.h"
 #include "Form.h"
 #include "gpu_detect/gpu_detect.h"
+#include <thread>
+#include <memory>
+#include <atomic>
 using nlohmann::json;
 using std::string;
 using std::cout;
 using std::endl;
 using std::vector;
-
 
 Gtk::ListBox* list = nullptr;
 
@@ -77,10 +79,10 @@ string find_hw_codec(const string& codec){
 
     return codec;
 }
+std::unique_ptr<std::thread> process_thread = nullptr;
+std::atomic<bool> process_done = true;
 
-void start(){
-    auto children = list->get_children();
-
+void process(vector<Gtk::Widget*> rows){
     Gtk::ComboBoxText* codec_comboBox = nullptr;
     Form::getInstance().getBuilder()->get_widget("codec",codec_comboBox);
     Gtk::ComboBoxText* container_comboBox = nullptr;
@@ -92,10 +94,55 @@ void start(){
     string hw_codec = find_hw_codec(codec);
     cout << codec << " " << hw_codec << endl;
 
-    for(auto row : children){
-        auto* entry = dynamic_cast<Entry*>(row);
-        entry->start(codec,hw_codec, container);
+    std::vector<std::thread> threads(std::thread::hardware_concurrency());
+
+    if(rows.size() <= threads.size()){
+        for(int i = 0; i < rows.size(); i++){
+            auto* entry = dynamic_cast<Entry*>(rows[i]);
+            threads[i] = std::thread(&Entry::process,entry, codec, hw_codec, container);
+        }
+
+        for(int i = 0; i < rows.size(); i++){
+            threads[i].join();
+        }
+    }else{
+        unsigned int processed = 0;
+        while(processed < rows.size()){
+
+            auto steps = processed + std::thread::hardware_concurrency() >= rows.size() ? rows.size() - processed : std::thread::hardware_concurrency();
+
+            for(int i = 0; i < steps; i++){
+                auto* entry = dynamic_cast<Entry*>(rows[processed++]);
+                threads[i] = std::thread(&Entry::process,entry, codec, hw_codec,container);
+            }
+
+            for(int i = 0; i < steps; i++){
+                threads[i].join();
+            }
+//            processed += std::thread::hardware_concurrency();
+        }
     }
+
+//    for(auto row : rows){
+//        auto* entry = dynamic_cast<Entry*>(row);
+////        entry->start(codec,hw_codec, container);
+//    }
+
+    process_done = true;
+}
+
+void start(){
+    auto children = list->get_children();
+
+    if(!process_done){
+        return;
+    }
+
+    process_done = false;
+    if(process_thread != nullptr){
+        process_thread->join();
+    }
+    process_thread = std::make_unique<std::thread>(process,children);
 }
 
 void callback(const Glib::RefPtr<Gdk::DragContext>& context, const int& x, const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
@@ -104,6 +151,7 @@ void callback(const Glib::RefPtr<Gdk::DragContext>& context, const int& x, const
     while(files >> file){
         json probe = FFmpeg::probe(file);
         auto row = Gtk::make_managed<Entry>(file, std::move(probe));
+//        auto row = new Entry(file, std::move(probe));
         list->add(*row);
         row->show_all();
     }
@@ -138,6 +186,9 @@ int main(int argc, char *argv[])
 
     window->show_all();
     int result = app->run(*window);
+    if(process_thread != nullptr){
+        process_thread->join();
+    }
     delete window;
     return result;
 }

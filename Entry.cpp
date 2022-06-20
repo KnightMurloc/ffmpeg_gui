@@ -164,6 +164,7 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
 void Entry::remove_self() {
     auto parent = this->get_parent();
     parent->remove(*this);
+    delete this;
 }
 
 //const string &Entry::getFileName() const {
@@ -182,14 +183,14 @@ Gtk::ProgressBar *Entry::getProgressBar() const {
     return progressBar;
 }
 
-void Entry::start(const string &codec, const string &hw_codec, const string &container) {
-//    std::cout << "start" << std::endl;
-//    thread th(&Entry::process,this, codec, hw_codec, container);
-    if(this->process_thread.get() != nullptr){
-        this->process_thread->join();
-    }
-    this->process_thread = make_unique<thread>(&Entry::process,this, codec, hw_codec, container);
-}
+//void Entry::start(const string &codec, const string &hw_codec, const string &container) {
+////    std::cout << "start" << std::endl;
+////    thread th(&Entry::process,this, codec, hw_codec, container);
+//    if(this->process_thread.get() != nullptr){
+//        this->process_thread->join();
+//    }
+//    this->process_thread = make_unique<thread>(&Entry::process,this, codec, hw_codec, container);
+//}
 
 bool update_progress_bar(pair<Entry*, float>* data){
 //    std::cout << data->second << std::endl;
@@ -212,20 +213,26 @@ void callback(FeedBack feedBack, any data){
 }
 
 void Entry::process(const string codec, const string hw_codec, const string container) {
-//    std::cout << "process" << std::endl;
-//    string path = dirnameOf(file_name);
     string path = std::filesystem::path(this->path).parent_path().string();
     string file = file_name_entry->get_text();
-//    std::cout << codec << " " << hw_codec << " " << container << " " << path << std::endl;
 
     FFmpeg ffmpeg;
-//    ffmpeg.addPreArg("-y");
     ffmpeg.setInput(this->path);
     ffmpeg.setOutput(path + "/" + file + "." + container);
     ffmpeg.addArg("-c:a copy"); //TODO
     ffmpeg.addArg("-c:v " + hw_codec); //first try hw codec
     ffmpeg.setCallback(callback,this);
-    ffmpeg.run();
+    //if hw are failed
+    if(ffmpeg.run()){
+        std::cout << "fallback to software" << std::endl;
+        FFmpeg ffmpeg;
+        ffmpeg.setInput(this->path);
+        ffmpeg.setOutput(path + "/" + file + "." + container);
+        ffmpeg.addArg("-c:a copy"); //TODO
+        ffmpeg.addArg("-c:v " + codec);
+        ffmpeg.setCallback(callback,this);
+        ffmpeg.run();
+    }
 }
 
 float Entry::getDuration() const {

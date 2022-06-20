@@ -26,23 +26,24 @@ private:
     Gtk::Entry* file_name_entry;
     Gtk::Image* status_image;
 
-    std::unique_ptr<std::thread> process_thread = nullptr;
+//    std::unique_ptr<std::thread> process_thread = nullptr;
 
     float duration;
 
     void remove_self();
 
-    void process(const std::string codec, const std::string hw_codec, const std::string container);
+
 public:
     Entry(std::string& path, json info);
 
     ~Entry() override {
         std::cout << "test destroy" << std::endl;
-        if(process_thread != nullptr)
-            process_thread->join();
+//        if(process_thread != nullptr)
+//            process_thread->join();
     }
 
-    void start(const std::string& codec, const std::string& hw_codec, const std::string& container);
+//    void process(const std::string codec, const std::string hw_codec, const std::string container);
+//    void start(const std::string& codec, const std::string& hw_codec, const std::string& container);
 
 //    const std::string &getFileName() const;
 
@@ -55,6 +56,7 @@ public:
     float getDuration() const;
 
     Gtk::Image *getStatusImage() const;
+    void process(const std::string codec, const std::string hw_codec, const std::string container);
 };
 
 
