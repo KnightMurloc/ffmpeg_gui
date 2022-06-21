@@ -11,11 +11,14 @@
 #include <vector>
 #include <thread>
 #include <memory>
+#include "lib.h"
 
 using nlohmann::json;
 
 class Entry : public Gtk::ListBoxRow {
+    friend void callback(FeedBack feedBack, std::any data);
 private:
+    static int entry_count;
     std::string path;
     json info;
 
@@ -25,6 +28,7 @@ private:
     Gtk::ProgressBar* progressBar;
     Gtk::Entry* file_name_entry;
     Gtk::Image* status_image;
+    Gtk::Label* time_label;
 
 //    std::unique_ptr<std::thread> process_thread = nullptr;
 
@@ -34,9 +38,13 @@ private:
 
 
 public:
+
+    static int getEntryCount();
+
     Entry(std::string& path, json info);
 
     ~Entry() override {
+        entry_count--;
         std::cout << "test destroy" << std::endl;
 //        if(process_thread != nullptr)
 //            process_thread->join();
@@ -57,6 +65,8 @@ public:
 
     Gtk::Image *getStatusImage() const;
     void process(const std::string codec, const std::string hw_codec, const std::string container);
+
+    Gtk::Label *getTimeLabel() const;
 };
 
 

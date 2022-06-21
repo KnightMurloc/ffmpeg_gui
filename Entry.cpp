@@ -18,7 +18,10 @@ using std::pair;
 using std::make_pair;
 using std::make_unique;
 
+int Entry::entry_count = 0;
+
 Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
+    entry_count++;
     auto box = Gtk::make_managed<Gtk::Box>();
     box->set_spacing(10);
     box->set_orientation(Gtk::ORIENTATION_HORIZONTAL);
@@ -45,7 +48,11 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
     file_name_entry = Gtk::make_managed<Gtk::Entry>();
     file_name_entry->set_text(file_name);
     progressBar = Gtk::make_managed<Gtk::ProgressBar>();
+
+    time_label = Gtk::make_managed<Gtk::Label>();
+
     center_box->add(*file_name_entry);
+    center_box->add(*time_label);
     center_box->add(*progressBar);
     box->add(*center_box);
 
@@ -195,21 +202,71 @@ Gtk::ProgressBar *Entry::getProgressBar() const {
 bool update_progress_bar(pair<Entry*, float>* data){
 //    std::cout << data->second << std::endl;
 //    data->first->set_fraction(data->second);
+
+    Gtk::ProgressBar* bar = nullptr;
+    Form::getInstance().getBuilder()->get_widget("progress",bar);
+    double progress = bar->get_fraction();
+    progress += (data->second - data->first->getProgressBar()->get_fraction()) / Entry::getEntryCount();
+    bar->set_fraction(progress);
+
     data->first->getProgressBar()->set_fraction(data->second);
     if(data->second == 1){
         data->first->getStatusImage()->set_from_icon_name("gtk-ok",Gtk::IconSize(Gtk::BuiltinIconSize::ICON_SIZE_BUTTON));
     }
+
     delete data;
+    return false;
+}
+
+bool update_time_info(pair<Entry*, string>* data){
+
+    data->first->getTimeLabel()->set_text(data->second);
+
+    delete data;
+
     return false;
 }
 
 void callback(FeedBack feedBack, any data){
     auto* entry = std::any_cast<Entry*>(data);
     float progress = (feedBack.getOutTimeMs() / 1000000.0f) / entry->getDuration();
+    float time_left = (entry->getDuration() - feedBack.getOutTimeMs() / 1000000.0f) / feedBack.getSpeed();
+//    std::cout << feedBack.getSpeed() << std::endl;
+
+    int seconds = (int) time_left;
+    int hr=(int)(seconds/3600);
+    int min=((int)(seconds/60))%60;
+    int sec=(int)(seconds%60);
+
+    string text;
+    text += std::to_string(hr);
+    text += ":";
+    text += std::to_string(min);
+    text += ":";
+    text += std::to_string(sec);
+
+//    Glib::Dispatcher dispatcher;
+//    dispatcher.connect([&time_left,&entry](){
+//        int seconds = (int) time_left;
+//        int hr=(int)(seconds/3600);
+//        int min=((int)(seconds/60))%60;
+//        int sec=(int)(seconds%60);
+//
+//        string text;
+//        text += std::to_string(hr);
+//        text += ":";
+//        text += std::to_string(min);
+//        text += ":";
+//        text += std::to_string(sec);
+//        entry->time_label->set_text(text);
+//    });
+//    dispatcher.emit();
     if(feedBack.getStatus() == FFmpegStatus::END){
         progress = 1;
     }
     g_idle_add((GSourceFunc) update_progress_bar,(void*) new pair(entry,progress));
+    g_idle_add((GSourceFunc) update_time_info,(void*) new pair(entry,text));
+
 }
 
 void Entry::process(const string codec, const string hw_codec, const string container) {
@@ -241,4 +298,12 @@ float Entry::getDuration() const {
 
 Gtk::Image *Entry::getStatusImage() const {
     return status_image;
+}
+
+int Entry::getEntryCount() {
+    return entry_count;
+}
+
+Gtk::Label *Entry::getTimeLabel() const {
+    return time_label;
 }

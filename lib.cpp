@@ -72,7 +72,7 @@ int FFmpeg::run() {
         stringstream tmp;
         while (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
 //            std::cout << "test" << std::endl;
-
+            std::setlocale (LC_NUMERIC,"en_US.utf-8");
             unsigned int frame;
             sscanf(buffer.data(),"frame=%u",&frame);
             fgets(buffer.data(), buffer.size(), pipe);
@@ -125,14 +125,14 @@ int FFmpeg::run() {
 
             float speed;
 //            std::cout << buffer.data() << std::endl;
-            sscanf(buffer.data(),"speed=%fx",&speed);
+            sscanf(buffer.data(),"speed=%f",&speed);
             fgets(buffer.data(), buffer.size(), pipe);
 
             string status(16,'\0');
             sscanf(buffer.data(),"progress=%s",status.data());
 //            std::cout << status << std::endl;
 //            std::cout << (strcmp(status.c_str(),"end") == 0) << std::endl;
-
+            std::setlocale (LC_NUMERIC,"");
             callback(FeedBack(
                     frame,
                     fps,

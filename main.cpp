@@ -10,6 +10,7 @@
 #include <thread>
 #include <memory>
 #include <atomic>
+#include <queue>
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -81,6 +82,22 @@ string find_hw_codec(const string& codec){
 }
 std::unique_ptr<std::thread> process_thread = nullptr;
 std::atomic<bool> process_done = true;
+std::mutex m;
+std::queue<Entry*> queue;
+
+void worker(const std::string codec, const std::string hw_codec, const std::string container){
+    while(true){
+        m.lock();
+        if(queue.empty()){
+            m.unlock();
+            return;
+        }
+        Entry* entry = queue.front();queue.pop();
+        m.unlock();
+
+        entry->process(codec,hw_codec, container);
+    }
+}
 
 void process(vector<Gtk::Widget*> rows){
     Gtk::ComboBoxText* codec_comboBox = nullptr;
@@ -96,6 +113,8 @@ void process(vector<Gtk::Widget*> rows){
 
     std::vector<std::thread> threads(std::thread::hardware_concurrency());
 
+
+
     if(rows.size() <= threads.size()){
         for(int i = 0; i < rows.size(); i++){
             auto* entry = dynamic_cast<Entry*>(rows[i]);
@@ -106,21 +125,19 @@ void process(vector<Gtk::Widget*> rows){
             threads[i].join();
         }
     }else{
-        unsigned int processed = 0;
-        while(processed < rows.size()){
-
-            auto steps = processed + std::thread::hardware_concurrency() >= rows.size() ? rows.size() - processed : std::thread::hardware_concurrency();
-
-            for(int i = 0; i < steps; i++){
-                auto* entry = dynamic_cast<Entry*>(rows[processed++]);
-                threads[i] = std::thread(&Entry::process,entry, codec, hw_codec,container);
-            }
-
-            for(int i = 0; i < steps; i++){
-                threads[i].join();
-            }
-//            processed += std::thread::hardware_concurrency();
+        for(auto row : rows){
+            auto* entry = dynamic_cast<Entry*>(row);
+            queue.push(entry);
         }
+
+        for(auto& thread : threads){
+            thread = std::thread(worker,codec, hw_codec, container);
+        }
+
+        for(auto& thread : threads){
+            thread.join();
+        }
+        queue = std::queue<Entry*>();
     }
 
 //    for(auto row : rows){
@@ -147,8 +164,9 @@ void start(){
 
 void callback(const Glib::RefPtr<Gdk::DragContext>& context, const int& x, const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
     std::istringstream files(seldata.get_data_as_string());
+    cout << files.str() << endl;
     string file;
-    while(files >> file){
+    while(std::getline(files,file,'\n')){
         json probe = FFmpeg::probe(file);
         auto row = Gtk::make_managed<Entry>(file, std::move(probe));
 //        auto row = new Entry(file, std::move(probe));
