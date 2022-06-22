@@ -16,10 +16,10 @@
 using nlohmann::json;
 
 class Entry : public Gtk::ListBoxRow {
-    friend void callback(FeedBack feedBack, std::any data);
+    friend void callback(const FeedBack& feedBack, std::any data);
 private:
     static int entry_count;
-    std::string path;
+    std::string full_path;
     json info;
 
     std::vector<Gtk::CheckButton*> video_streams;
@@ -64,7 +64,7 @@ public:
     float getDuration() const;
 
     Gtk::Image *getStatusImage() const;
-    void process(const std::string codec, const std::string hw_codec, const std::string container);
+    void process(const std::string& codec, const std::string& hw_codec, const std::string& container);
 
     Gtk::Label *getTimeLabel() const;
 };

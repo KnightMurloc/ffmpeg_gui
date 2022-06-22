@@ -250,11 +250,11 @@ void FFmpeg::setOutput(const string output) {
     FFmpeg::output = output;
 }
 
-const std::function<void(FeedBack, std::any)> &FFmpeg::getCallback() const {
+const std::function<void(const FeedBack&, std::any)> &FFmpeg::getCallback() const {
     return callback;
 }
 
-void FFmpeg::setCallback(const std::function<void(FeedBack, std::any)> &callback, any data) {
+void FFmpeg::setCallback(const std::function<void(const FeedBack&, std::any)> &callback, any data) {
     FFmpeg::callback = callback;
     this->data = data;
 }

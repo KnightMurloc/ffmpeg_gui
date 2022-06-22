@@ -165,7 +165,7 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
     std::setlocale (LC_NUMERIC,"");
     this->info = std::move(info);
 //    this->file_name = std::move(file_name);
-    this->path = path;
+    this->full_path = path;
 }
 
 void Entry::remove_self() {
@@ -227,10 +227,10 @@ bool update_time_info(pair<Entry*, string>* data){
     return false;
 }
 
-void callback(FeedBack feedBack, any data){
+void callback(const FeedBack& feedBack, any data){
     auto* entry = std::any_cast<Entry*>(data);
-    float progress = (feedBack.getOutTimeMs() / 1000000.0f) / entry->getDuration();
-    float time_left = (entry->getDuration() - feedBack.getOutTimeMs() / 1000000.0f) / feedBack.getSpeed();
+    double progress = ((double) feedBack.getOutTimeMs() / 1000000.0) / entry->getDuration();
+    double time_left = (entry->getDuration() - (double) feedBack.getOutTimeMs() / 1000000.0) / feedBack.getSpeed();
 //    std::cout << feedBack.getSpeed() << std::endl;
 
     int seconds = (int) time_left;
@@ -245,22 +245,6 @@ void callback(FeedBack feedBack, any data){
     text += ":";
     text += std::to_string(sec);
 
-//    Glib::Dispatcher dispatcher;
-//    dispatcher.connect([&time_left,&entry](){
-//        int seconds = (int) time_left;
-//        int hr=(int)(seconds/3600);
-//        int min=((int)(seconds/60))%60;
-//        int sec=(int)(seconds%60);
-//
-//        string text;
-//        text += std::to_string(hr);
-//        text += ":";
-//        text += std::to_string(min);
-//        text += ":";
-//        text += std::to_string(sec);
-//        entry->time_label->set_text(text);
-//    });
-//    dispatcher.emit();
     if(feedBack.getStatus() == FFmpegStatus::END){
         progress = 1;
     }
@@ -269,12 +253,12 @@ void callback(FeedBack feedBack, any data){
 
 }
 
-void Entry::process(const string codec, const string hw_codec, const string container) {
-    string path = std::filesystem::path(this->path).parent_path().string();
+void Entry::process(const string& codec, const string& hw_codec, const string& container) {
+    string path = std::filesystem::path(this->full_path).parent_path().string();
     string file = file_name_entry->get_text();
 
     FFmpeg ffmpeg;
-    ffmpeg.setInput(this->path);
+    ffmpeg.setInput(this->full_path);
     ffmpeg.setOutput(path + "/" + file + "." + container);
     ffmpeg.addArg("-c:a copy"); //TODO
     ffmpeg.addArg("-c:v " + hw_codec); //first try hw codec
@@ -282,8 +266,8 @@ void Entry::process(const string codec, const string hw_codec, const string cont
     //if hw are failed
     if(ffmpeg.run()){
         std::cout << "fallback to software" << std::endl;
-        FFmpeg ffmpeg;
-        ffmpeg.setInput(this->path);
+        ffmpeg = FFmpeg();
+        ffmpeg.setInput(this->full_path);
         ffmpeg.setOutput(path + "/" + file + "." + container);
         ffmpeg.addArg("-c:a copy"); //TODO
         ffmpeg.addArg("-c:v " + codec);

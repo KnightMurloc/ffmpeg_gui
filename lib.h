@@ -31,7 +31,7 @@ private:
     bool debug = false;
     std::string input;
     std::string output;
-    std::function<void(FeedBack, std::any)> callback = nullptr;
+    std::function<void(const FeedBack&, std::any)> callback = nullptr;
     std::any data;
 public:
     [[nodiscard]] static json probe(std::string& file);
@@ -53,9 +53,9 @@ public:
 
     void setOutput(const std::string output);
 
-    [[nodiscard]] const std::function<void(FeedBack, std::any)> &getCallback() const;
+    [[nodiscard]] const std::function<void(const FeedBack&, std::any)> &getCallback() const;
 
-    void setCallback(const std::function<void(FeedBack, std::any)> &callback, std::any data);
+    void setCallback(const std::function<void(const FeedBack&, std::any)> &callback, std::any data);
 
     void addArg(std::string arg);
     void addPreArg(std::string arg);
