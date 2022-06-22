@@ -8,7 +8,6 @@
 #include "Form.h"
 #include "gpu_detect/gpu_detect.h"
 #include <thread>
-#include <memory>
 #include <atomic>
 #include <queue>
 using nlohmann::json;
@@ -80,19 +79,24 @@ string find_hw_codec(const string& codec){
 
     return codec;
 }
+
 std::unique_ptr<std::thread> process_thread = nullptr;
 std::atomic<bool> process_done = true;
 std::mutex m;
-std::queue<Entry*> queue;
+auto& get_queue(){
+    static std::queue<Entry*> queue;
+    return queue;
+}
 
-void worker(const std::string codec, const std::string hw_codec, const std::string container){
+
+void worker(const std::string& codec, const std::string& hw_codec, const std::string& container){
     while(true){
         m.lock();
-        if(queue.empty()){
+        if(get_queue().empty()){
             m.unlock();
             return;
         }
-        Entry* entry = queue.front();queue.pop();
+        Entry* entry = get_queue().front();get_queue().pop();
         m.unlock();
 
         entry->process(codec,hw_codec, container);
@@ -127,7 +131,7 @@ void process(vector<Gtk::Widget*> rows){
     }else{
         for(auto row : rows){
             auto* entry = dynamic_cast<Entry*>(row);
-            queue.push(entry);
+            get_queue().push(entry);
         }
 
         for(auto& thread : threads){
@@ -137,7 +141,7 @@ void process(vector<Gtk::Widget*> rows){
         for(auto& thread : threads){
             thread.join();
         }
-        queue = std::queue<Entry*>();
+        get_queue() = std::queue<Entry*>();
     }
 
 //    for(auto row : rows){
