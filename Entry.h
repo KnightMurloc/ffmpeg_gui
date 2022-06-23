@@ -15,6 +15,14 @@
 
 using nlohmann::json;
 
+struct EncodeInfo{
+    std::string codec;
+    std::string hw_codec;
+    std::string container;
+
+    std::string path;
+};
+
 class Entry : public Gtk::ListBoxRow {
     friend void callback(const FeedBack& feedBack, std::any data);
 private:
@@ -64,7 +72,7 @@ public:
     float getDuration() const;
 
     Gtk::Image *getStatusImage() const;
-    void process(const std::string& codec, const std::string& hw_codec, const std::string& container);
+    void process(const EncodeInfo& param);
 
     Gtk::Label *getTimeLabel() const;
 };

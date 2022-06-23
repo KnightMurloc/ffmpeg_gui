@@ -17,6 +17,9 @@ using std::endl;
 using std::vector;
 
 Gtk::ListBox* list = nullptr;
+Gtk::CheckButton* path_enable = nullptr;
+Gtk::Entry* path_entry = nullptr;
+Gtk::Button* open_folder = nullptr;
 
 string find_hw_codec(const string& codec){
     GPU gpu = get_gpu_list().front();
@@ -88,8 +91,7 @@ auto& get_queue(){
     return queue;
 }
 
-
-void worker(const std::string& codec, const std::string& hw_codec, const std::string& container){
+void worker(const EncodeInfo& param){
     while(true){
         m.lock();
         if(get_queue().empty()){
@@ -99,7 +101,7 @@ void worker(const std::string& codec, const std::string& hw_codec, const std::st
         Entry* entry = get_queue().front();get_queue().pop();
         m.unlock();
 
-        entry->process(codec,hw_codec, container);
+        entry->process(param);
     }
 }
 
@@ -115,14 +117,20 @@ void process(vector<Gtk::Widget*> rows){
     string hw_codec = find_hw_codec(codec);
     cout << codec << " " << hw_codec << endl;
 
+    EncodeInfo param;
+    param.codec = codec;
+    param.hw_codec = hw_codec;
+    param.container = container;
+    if(path_enable->get_active()){
+        param.path = path_entry->get_text();
+    }
+
     std::vector<std::thread> threads(std::thread::hardware_concurrency());
-
-
 
     if(rows.size() <= threads.size()){
         for(int i = 0; i < rows.size(); i++){
             auto* entry = dynamic_cast<Entry*>(rows[i]);
-            threads[i] = std::thread(&Entry::process,entry, codec, hw_codec, container);
+            threads[i] = std::thread(&Entry::process,entry, param);
         }
 
         for(int i = 0; i < rows.size(); i++){
@@ -135,7 +143,7 @@ void process(vector<Gtk::Widget*> rows){
         }
 
         for(auto& thread : threads){
-            thread = std::thread(worker,codec, hw_codec, container);
+            thread = std::thread(worker,param);
         }
 
         for(auto& thread : threads){
@@ -143,11 +151,6 @@ void process(vector<Gtk::Widget*> rows){
         }
         get_queue() = std::queue<Entry*>();
     }
-
-//    for(auto row : rows){
-//        auto* entry = dynamic_cast<Entry*>(row);
-////        entry->start(codec,hw_codec, container);
-//    }
 
     process_done = true;
 }
@@ -166,14 +169,15 @@ void start(){
     process_thread = std::make_unique<std::thread>(process,children);
 }
 
-void callback(const Glib::RefPtr<Gdk::DragContext>& context, const int& x, const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
+void callback(const Glib::RefPtr<Gdk::DragContext>& context,
+              const int& x,
+              const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
     std::istringstream files(seldata.get_data_as_string());
     cout << files.str() << endl;
     string file;
     while(std::getline(files,file,'\n')){
         json probe = FFmpeg::probe(file);
         auto row = Gtk::make_managed<Entry>(file, std::move(probe));
-//        auto row = new Entry(file, std::move(probe));
         list->add(*row);
         row->show_all();
     }
@@ -182,11 +186,7 @@ void callback(const Glib::RefPtr<Gdk::DragContext>& context, const int& x, const
 int main(int argc, char *argv[])
 {
 
-    auto app =
-            Gtk::Application::create(argc, argv,
-                                     "org.gtkmm.examples.base");
-
-//    auto builder = Gtk::Builder::create_from_file(main_ui);
+    auto app = Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
 
     Gtk::Window* window = nullptr;
     Form::getInstance().getBuilder()->get_widget("main", window);
@@ -205,6 +205,29 @@ int main(int argc, char *argv[])
     Form::getInstance().getBuilder()->get_widget("start",start_button);
 
     start_button->signal_clicked().connect(sigc::ptr_fun(start));
+
+    Form::getInstance().getBuilder()->get_widget("path_enable",path_enable);
+    Form::getInstance().getBuilder()->get_widget("path_entry",path_entry);
+
+
+    Form::getInstance().getBuilder()->get_widget("open_folder",open_folder);
+    open_folder->signal_clicked().connect([&window](){
+       auto dialog = Gtk::FileChooserNative::create(
+               "Please choose a folder",
+               *window,
+               Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SELECT_FOLDER);
+
+       dialog->run();
+       cout << dialog->get_filename().front() << " " << dialog->get_filename().back() << endl;
+       path_entry->set_text(dialog->get_filename());
+//       dialog.
+
+    });
+
+    path_enable->signal_toggled().connect([](){
+        path_entry->set_sensitive(path_enable->get_active());
+        open_folder->set_sensitive(path_enable->get_active());
+    });
 
     window->show_all();
     int result = app->run(*window);

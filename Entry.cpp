@@ -199,10 +199,8 @@ Gtk::ProgressBar *Entry::getProgressBar() const {
 //    this->process_thread = make_unique<thread>(&Entry::process,this, codec, hw_codec, container);
 //}
 
-bool update_progress_bar(pair<Entry*, float>* data){
+bool update_progress_bar(pair<Entry*, double>* data){
 //    std::cout << data->second << std::endl;
-//    data->first->set_fraction(data->second);
-
     Gtk::ProgressBar* bar = nullptr;
     Form::getInstance().getBuilder()->get_widget("progress",bar);
     double progress = bar->get_fraction();
@@ -231,7 +229,7 @@ void callback(const FeedBack& feedBack, any data){
     auto* entry = std::any_cast<Entry*>(data);
     double progress = ((double) feedBack.getOutTimeMs() / 1000000.0) / entry->getDuration();
     double time_left = (entry->getDuration() - (double) feedBack.getOutTimeMs() / 1000000.0) / feedBack.getSpeed();
-//    std::cout << feedBack.getSpeed() << std::endl;
+
 
     int seconds = (int) time_left;
     int hr=(int)(seconds/3600);
@@ -253,24 +251,27 @@ void callback(const FeedBack& feedBack, any data){
 
 }
 
-void Entry::process(const string& codec, const string& hw_codec, const string& container) {
-    string path = std::filesystem::path(this->full_path).parent_path().string();
+void Entry::process(const EncodeInfo& param) {
+    string path = param.path.empty() ? std::filesystem::path(this->full_path).parent_path().string() : param.path;
+    if(path.back() != '/'){
+        path += '/';
+    }
     string file = file_name_entry->get_text();
 
     FFmpeg ffmpeg;
     ffmpeg.setInput(this->full_path);
-    ffmpeg.setOutput(path + "/" + file + "." + container);
+    ffmpeg.setOutput(path + file + "." + param.container);
     ffmpeg.addArg("-c:a copy"); //TODO
-    ffmpeg.addArg("-c:v " + hw_codec); //first try hw codec
+    ffmpeg.addArg("-c:v " + param.hw_codec); //first try hw codec
     ffmpeg.setCallback(callback,this);
     //if hw are failed
     if(ffmpeg.run()){
         std::cout << "fallback to software" << std::endl;
         ffmpeg = FFmpeg();
         ffmpeg.setInput(this->full_path);
-        ffmpeg.setOutput(path + "/" + file + "." + container);
+        ffmpeg.setOutput(path + file + "." + param.container);
         ffmpeg.addArg("-c:a copy"); //TODO
-        ffmpeg.addArg("-c:v " + codec);
+        ffmpeg.addArg("-c:v " + param.codec);
         ffmpeg.setCallback(callback,this);
         ffmpeg.run();
     }

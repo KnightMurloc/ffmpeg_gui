@@ -25,24 +25,7 @@ json FFmpeg::probe(string& file) {
     }
 
     tmp >> result;
-    return std::move(result);
-}
-
-float convertBitrate(stringstream& stream){
-    string raw;
-    stream >> raw;
-    char size = raw[raw.length() - 5];
-    raw[raw.length() - 5] = '\0';
-    float bitrate = atof(raw.c_str());
-    switch (size) {
-        case 'k':
-            bitrate *= 1024;
-            break;
-        case 'm':
-            bitrate *= 1024 * 1024;
-            break;
-    }
-    return bitrate;
+    return result;
 }
 
 int FFmpeg::run() {

@@ -1,0 +1,6 @@
+[submodule "json"]
+    path = json
+    url = https://github.com/nlohmann/json
+[submodule "gpu_detect"]
+    path = gpu_detect
+    url = https://github.com/KnightMurloc/gpu_detect
