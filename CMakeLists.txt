@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_subdirectory(json)
 add_subdirectory(gpu_detect)
+add_subdirectory(xdg)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTKMM gtkmm-3.0)
@@ -15,5 +16,5 @@ include_directories(${GTKMM_INCLUDE_DIRS})
 #message(${GTKMM_INCLUDE_DIRS})
 
 add_executable(ffmpeg_gui main.cpp lib.cpp lib.h Entry.cpp Entry.h Form.cpp Form.h)
-target_link_libraries(ffmpeg_gui ${GTKMM_LIBRARIES} gpu_detect)
+target_link_libraries(ffmpeg_gui ${GTKMM_LIBRARIES} gpu_detect xdg)
 target_include_directories(ffmpeg_gui PRIVATE json/include)

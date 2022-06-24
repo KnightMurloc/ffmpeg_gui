@@ -10,6 +10,7 @@
 #include <thread>
 #include <atomic>
 #include <queue>
+#include "xdg/xdg.h"
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -231,7 +232,7 @@ void callback(const Glib::RefPtr<Gdk::DragContext>& context,
 
 int main(int argc, char *argv[])
 {
-
+    cout << xdg::config().home() << endl;
     auto app = Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
 
     Gtk::Window* window = nullptr;
@@ -264,9 +265,15 @@ int main(int argc, char *argv[])
                Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SELECT_FOLDER);
 
        dialog->run();
-       cout << dialog->get_filename().front() << " " << dialog->get_filename().back() << endl;
-       path_entry->set_text(dialog->get_filename());
-//       dialog.
+
+       if(!dialog->get_filename().empty()){
+           path_entry->set_text(dialog->get_filename());
+       }
+
+//       cout << dialog->get_filename().empty() << endl;
+//       if(dialog->get_filename() )
+//       cout << dialog->get_filename().front() << " " << dialog->get_filename().back() << endl;
+//       path_entry->set_text(dialog->get_filename());
 
     });
 
