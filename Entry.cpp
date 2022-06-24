@@ -183,7 +183,7 @@ const std::vector<Gtk::CheckButton *> &Entry::getVideoStreams() const {
 }
 
 const std::vector<Gtk::CheckButton *> &Entry::getVideoAudio() const {
-    return video_audio;
+    return audio_streams;
 }
 
 Gtk::ProgressBar *Entry::getProgressBar() const {
@@ -259,10 +259,27 @@ void Entry::process(const EncodeInfo& param) {
     string file = file_name_entry->get_text();
 
     FFmpeg ffmpeg;
+
+    if(param.gpu.vendor == Vendor::AMD){
+        ffmpeg.addPreArg("-vaapi_device /dev/dri/renderD128");
+    }
+
     ffmpeg.setInput(this->full_path);
     ffmpeg.setOutput(path + file + "." + param.container);
+
+    for(auto& stream : this->audio_streams){
+        if(!stream->get_active()){
+//            ffmpeg.addArg()
+        }
+    }
+
     ffmpeg.addArg("-c:a copy"); //TODO
     ffmpeg.addArg("-c:v " + param.hw_codec); //first try hw codec
+
+    if(param.gpu.vendor == Vendor::AMD){
+        ffmpeg.addArg("-vf format=\"nv12|vaapi,hwupload\"");
+    }
+
     ffmpeg.setCallback(callback,this);
     //if hw are failed
     if(ffmpeg.run()){

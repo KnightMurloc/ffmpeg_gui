@@ -21,8 +21,7 @@ Gtk::CheckButton* path_enable = nullptr;
 Gtk::Entry* path_entry = nullptr;
 Gtk::Button* open_folder = nullptr;
 
-string find_hw_codec(const string& codec){
-    GPU gpu = get_gpu_list().front();
+string find_hw_codec(const string& codec, GPU& gpu){
     if(codec == "h264"){
         switch (gpu.vendor) {
             case Vendor::NVIDIA:
@@ -114,13 +113,16 @@ void process(vector<Gtk::Widget*> rows){
     string codec = codec_comboBox->get_active_id();
     string container = container_comboBox->get_active_text();
 
-    string hw_codec = find_hw_codec(codec);
+    GPU gpu = get_gpu_list().front();
+
+    string hw_codec = find_hw_codec(codec,gpu);
     cout << codec << " " << hw_codec << endl;
 
     EncodeInfo param;
     param.codec = codec;
     param.hw_codec = hw_codec;
     param.container = container;
+    param.gpu = gpu;
     if(path_enable->get_active()){
         param.path = path_entry->get_text();
     }
@@ -169,18 +171,62 @@ void start(){
     process_thread = std::make_unique<std::thread>(process,children);
 }
 
+std::string UrlDecode(const std::string& value)
+{
+    std::string result;
+    result.reserve(value.size());
+
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        auto ch = value[i];
+
+        if (ch == '%' && (i + 2) < value.size())
+        {
+            auto hex = value.substr(i + 1, 2);
+            auto dec = static_cast<char>(std::strtol(hex.c_str(), nullptr, 16));
+            result.push_back(dec);
+            i += 2;
+        }
+        else if (ch == '+')
+        {
+            result.push_back(' ');
+        }
+        else
+        {
+            result.push_back(ch);
+        }
+    }
+
+    return result;
+}
+
 void callback(const Glib::RefPtr<Gdk::DragContext>& context,
               const int& x,
               const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
-    std::istringstream files(seldata.get_data_as_string());
-    cout << files.str() << endl;
-    string file;
-    while(std::getline(files,file,'\n')){
+    for(auto& uri : seldata.get_uris()){
+        auto file = UrlDecode(uri);
         json probe = FFmpeg::probe(file);
         auto row = Gtk::make_managed<Entry>(file, std::move(probe));
         list->add(*row);
         row->show_all();
     }
+
+    //    for(auto url : seldata.get_data_as_string()){
+//        cout << url << endl;
+//    }
+
+//    cout << UrlDecode(seldata.get_data_as_string()) << endl;
+
+    //    std::istringstream files(seldata.get_data_as_string());
+//
+//    cout << files.str() << endl;
+//    string file;
+//    while(std::getline(files,file,'\n')){
+//        json probe = FFmpeg::probe(file);
+//        auto row = Gtk::make_managed<Entry>(file, std::move(probe));
+//        list->add(*row);
+//        row->show_all();
+//    }
 }
 
 int main(int argc, char *argv[])
@@ -196,7 +242,7 @@ int main(int argc, char *argv[])
 
     Form::getInstance().getBuilder()->get_widget("list",list);
     list->drag_dest_set({
-        Gtk::TargetEntry("text/plain")
+        Gtk::TargetEntry("text/uri-list")
     },Gtk::DestDefaults::DEST_DEFAULT_ALL, Gdk::DragAction::ACTION_COPY);
 
     list->signal_drag_data_received().connect(sigc::ptr_fun(callback));

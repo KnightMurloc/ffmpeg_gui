@@ -12,6 +12,7 @@
 #include <thread>
 #include <memory>
 #include "lib.h"
+#include "gpu_detect/gpu_detect.h"
 
 using nlohmann::json;
 
@@ -21,6 +22,8 @@ struct EncodeInfo{
     std::string container;
 
     std::string path;
+
+    GPU gpu;
 };
 
 class Entry : public Gtk::ListBoxRow {
@@ -31,7 +34,7 @@ private:
     json info;
 
     std::vector<Gtk::CheckButton*> video_streams;
-    std::vector<Gtk::CheckButton*> video_audio;
+    std::vector<Gtk::CheckButton*> audio_streams;
 
     Gtk::ProgressBar* progressBar;
     Gtk::Entry* file_name_entry;
