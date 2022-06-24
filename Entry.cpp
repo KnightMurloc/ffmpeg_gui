@@ -137,6 +137,7 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
             name->set_active(true);
 
             audio_list->add(*name);
+            audio_streams.push_back(name);
         }
     }
     right_box->add(*video_scroll);
@@ -266,10 +267,11 @@ void Entry::process(const EncodeInfo& param) {
 
     ffmpeg.setInput(this->full_path);
     ffmpeg.setOutput(path + file + "." + param.container);
-
-    for(auto& stream : this->audio_streams){
+    ffmpeg.addArg("-map 0");
+    for(size_t i = 0; i < audio_streams.size(); i++){
+        auto& stream = audio_streams[i];
         if(!stream->get_active()){
-//            ffmpeg.addArg()
+            ffmpeg.addArg("-map -0:a:" + std::to_string(i));
         }
     }
 
@@ -287,6 +289,14 @@ void Entry::process(const EncodeInfo& param) {
         ffmpeg = FFmpeg();
         ffmpeg.setInput(this->full_path);
         ffmpeg.setOutput(path + file + "." + param.container);
+        ffmpeg.addArg("-map 0");
+        for(size_t i = 0; i < audio_streams.size(); i++){
+            auto& stream = audio_streams[i];
+            if(!stream->get_active()){
+                ffmpeg.addArg("-map -0:a:" + std::to_string(i));
+            }
+        }
+
         ffmpeg.addArg("-c:a copy"); //TODO
         ffmpeg.addArg("-c:v " + param.codec);
         ffmpeg.setCallback(callback,this);
