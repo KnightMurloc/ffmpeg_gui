@@ -13,6 +13,7 @@
 #include "xdg/xdg.h"
 #include <filesystem>
 #include <fstream>
+#include <memory>
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -113,6 +114,14 @@ void process(vector<Gtk::Widget*> rows){
     Gtk::ComboBoxText* container_comboBox = nullptr;
     Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
 
+    Gtk::Entry* video_bitrate_entry = nullptr;
+    Gtk::Entry* audio_bitrate_entry = nullptr;
+    Gtk::ComboBoxText* audio_codec = nullptr;
+
+    Form::getInstance().getBuilder()->get_widget("video_bitrate_entry",video_bitrate_entry);
+    Form::getInstance().getBuilder()->get_widget("audio_bitrate_entry",audio_bitrate_entry);
+    Form::getInstance().getBuilder()->get_widget("audio_codec",audio_codec);
+
     string codec = codec_comboBox->get_active_id();
     string container = container_comboBox->get_active_text();
 
@@ -126,9 +135,22 @@ void process(vector<Gtk::Widget*> rows){
     param.hw_codec = hw_codec;
     param.container = container;
     param.gpu = gpu;
+
     if(path_enable->get_active()){
         param.path = path_entry->get_text();
     }
+
+    if(video_bitrate_entry->get_text() != "-1"){
+        param.video_bitrate = video_bitrate_entry->get_text();
+    }
+
+    if(audio_bitrate_entry->get_text() != "-1"){
+        param.audio_bitrate = audio_bitrate_entry->get_text();
+    }
+
+    param.audio_codec = audio_codec->get_active_text();
+    cout << param.audio_codec << endl;
+    cout << param.video_bitrate << endl;
 
     std::vector<std::thread> threads(std::thread::hardware_concurrency());
 
@@ -174,28 +196,23 @@ void start(){
     process_thread = std::make_unique<std::thread>(process,children);
 }
 
-std::string UrlDecode(const std::string& value)
-{
+std::string UrlDecode(const std::string& value){
     std::string result;
     result.reserve(value.size());
 
-    for (std::size_t i = 0; i < value.size(); ++i)
-    {
+    for (std::size_t i = 0; i < value.size(); ++i){
         auto ch = value[i];
 
-        if (ch == '%' && (i + 2) < value.size())
-        {
+        if (ch == '%' && (i + 2) < value.size()){
             auto hex = value.substr(i + 1, 2);
             auto dec = static_cast<char>(std::strtol(hex.c_str(), nullptr, 16));
             result.push_back(dec);
             i += 2;
         }
-        else if (ch == '+')
-        {
+        else if (ch == '+'){
             result.push_back(' ');
         }
-        else
-        {
+        else{
             result.push_back(ch);
         }
     }
@@ -238,7 +255,6 @@ void save_config(Gtk::Widget* self){
     Gtk::ComboBoxText* container_comboBox = nullptr;
     Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
 
-//        cout << codec_comboBox->get_active_id() << endl;
     string config_dir = xdg::config().home().string() + "/ffmpeg_gui";
     if (!std::filesystem::is_directory(config_dir) || !std::filesystem::exists(config_dir)) { // Check if src folder exists
         std::filesystem::create_directory(config_dir); // create src folder
@@ -266,23 +282,23 @@ void restore_config(){
 
     std::ifstream stream(config_file);
 
-    json config;
-    stream >> config;
+    if(stream) {
+        json config;
+        stream >> config;
 
-    Gtk::ComboBoxText* codec_comboBox = nullptr;
-    Form::getInstance().getBuilder()->get_widget("codec",codec_comboBox);
-    Gtk::ComboBoxText* container_comboBox = nullptr;
-    Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
+        Gtk::ComboBoxText *codec_comboBox = nullptr;
+        Form::getInstance().getBuilder()->get_widget("codec", codec_comboBox);
+        Gtk::ComboBoxText *container_comboBox = nullptr;
+        Form::getInstance().getBuilder()->get_widget("container", container_comboBox);
 
-    codec_comboBox->set_active_id(config["codec"]);
-    container_comboBox->set_active_text(config["container"]);
+        codec_comboBox->set_active_id(config["codec"]);
+        container_comboBox->set_active_text(config["container"]);
 
-//    config["path_enable"] = path_enable->get_active();
-//    config["path_entry"] = path_entry->get_text();
-    path_enable->set_active(config["path_enable"]);
-    path_entry->set_text(config["path_entry"]);
-    path_entry->set_sensitive(config["path_enable"]);
-    open_folder->set_sensitive(config["path_enable"]);
+        path_enable->set_active(config["path_enable"]);
+        path_entry->set_text(config["path_entry"]);
+        path_entry->set_sensitive(config["path_enable"]);
+        open_folder->set_sensitive(config["path_enable"]);
+    }
 }
 
 int main(int argc, char *argv[])
@@ -324,13 +340,23 @@ int main(int argc, char *argv[])
        if(!dialog->get_filename().empty()){
            path_entry->set_text(dialog->get_filename());
        }
-
-
     });
     restore_config();
     path_enable->signal_toggled().connect([](){
         path_entry->set_sensitive(path_enable->get_active());
         open_folder->set_sensitive(path_enable->get_active());
+    });
+
+    Gtk::Button* config_button = nullptr;
+    Form::getInstance().getBuilder()->get_widget("config_button",config_button);
+
+    config_button->signal_clicked().connect([](){
+        Gtk::Dialog* dialog = nullptr;
+        Form::getInstance().getBuilder()->get_widget("config",dialog);
+
+        dialog->run();
+
+//        delete dialog;
     });
 
     window->signal_remove().connect(sigc::ptr_fun(save_config));

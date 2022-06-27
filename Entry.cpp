@@ -100,15 +100,6 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
     right_box->set_spacing(5);
     right_box->set_homogeneous(true);
 
-    auto video_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
-    video_scroll->set_hexpand(true);
-    auto video_list = Gtk::make_managed<Gtk::ListBox>();
-    video_scroll->add(*video_list);
-
-    auto audio_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
-    audio_scroll->set_hexpand(true);
-    auto audio_list = Gtk::make_managed<Gtk::ListBox>();
-    audio_scroll->add(*audio_list);
     int count = 0;
     for(auto stream : info["streams"]){
         count++;
@@ -122,7 +113,8 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
             auto name = Gtk::make_managed<Gtk::CheckButton>(title);
             name->set_active(true);
 
-            video_list->add(*name);
+//            video_list->add(*name);
+            video_streams.push_back(name);
             continue;
         }
 
@@ -136,12 +128,42 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
             auto name = Gtk::make_managed<Gtk::CheckButton>(title);
             name->set_active(true);
 
-            audio_list->add(*name);
+//            audio_list->add(*name);
             audio_streams.push_back(name);
         }
     }
-    right_box->add(*video_scroll);
-    right_box->add(*audio_scroll);
+
+    if(video_streams.size() == 1){
+        right_box->add(*video_streams[0]);
+    }else{
+        auto video_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+        video_scroll->set_hexpand(true);
+        auto video_list = Gtk::make_managed<Gtk::ListBox>();
+
+        for(auto stream : video_streams){
+            video_list->add(*stream);
+        }
+
+        video_scroll->add(*video_list);
+        right_box->add(*video_scroll);
+    }
+
+    if(audio_streams.size() == 1){
+        right_box->add(*audio_streams[0]);
+    }else{
+        auto audio_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+        audio_scroll->set_hexpand(true);
+        auto audio_list = Gtk::make_managed<Gtk::ListBox>();
+
+        for(auto stream : audio_streams){
+            audio_list->add(*stream);
+        }
+
+        audio_scroll->add(*audio_list);
+        right_box->add(*audio_scroll);
+    }
+
+
     box->add(*right_box);
 //    box->add(*videos);
 //    Gtk::
@@ -275,8 +297,14 @@ void Entry::process(const EncodeInfo& param) {
         }
     }
 
-    ffmpeg.addArg("-c:a copy"); //TODO
+    ffmpeg.addArg("-c:a " + param.audio_codec);
+    if(!param.audio_bitrate.empty()){
+        ffmpeg.addArg("-b:a " + param.audio_bitrate);
+    }
     ffmpeg.addArg("-c:v " + param.hw_codec); //first try hw codec
+    if(!param.video_bitrate.empty()){
+        ffmpeg.addArg("-b:v " + param.video_bitrate);
+    }
 
     if(param.gpu.vendor == Vendor::AMD){
         ffmpeg.addArg("-vf format=\"nv12|vaapi,hwupload\"");
@@ -297,11 +325,17 @@ void Entry::process(const EncodeInfo& param) {
             }
         }
 
-        ffmpeg.addArg("-c:a copy"); //TODO
+        ffmpeg.addArg("-c:a " + param.audio_codec);
+        if(!param.audio_bitrate.empty()){
+            ffmpeg.addArg("-b:a " + param.audio_bitrate);
+        }
         ffmpeg.addArg("-c:v " + param.codec);
+        if(!param.video_bitrate.empty()){
+            ffmpeg.addArg("-b:v " + param.video_bitrate);
+        }
         ffmpeg.setCallback(callback,this);
         ffmpeg.run();
-    }
+    }//TODO check if software are failed and show error
 }
 
 float Entry::getDuration() const {

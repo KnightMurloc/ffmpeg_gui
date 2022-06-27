@@ -23,6 +23,10 @@ struct EncodeInfo{
 
     std::string path;
 
+    std::string video_bitrate;
+    std::string audio_codec;
+    std::string audio_bitrate;
+
     GPU gpu;
 };
 
