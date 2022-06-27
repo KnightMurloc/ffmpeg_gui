@@ -11,6 +11,8 @@
 #include <atomic>
 #include <queue>
 #include "xdg/xdg.h"
+#include <filesystem>
+#include <fstream>
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -230,6 +232,59 @@ void callback(const Glib::RefPtr<Gdk::DragContext>& context,
 //    }
 }
 
+void save_config(Gtk::Widget* self){
+    Gtk::ComboBoxText* codec_comboBox = nullptr;
+    Form::getInstance().getBuilder()->get_widget("codec",codec_comboBox);
+    Gtk::ComboBoxText* container_comboBox = nullptr;
+    Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
+
+//        cout << codec_comboBox->get_active_id() << endl;
+    string config_dir = xdg::config().home().string() + "/ffmpeg_gui";
+    if (!std::filesystem::is_directory(config_dir) || !std::filesystem::exists(config_dir)) { // Check if src folder exists
+        std::filesystem::create_directory(config_dir); // create src folder
+    }
+    string config_file = std::move(config_dir) + "/config";
+    json config;
+    config["codec"] = codec_comboBox->get_active_id();
+    config["container"] = container_comboBox->get_active_text();
+
+    config["path_enable"] = path_enable->get_active();
+    config["path_entry"] = path_entry->get_text();
+
+    std::ofstream stream(config_file);
+
+    stream << config;
+    stream.close();
+}
+
+void restore_config(){
+    string config_dir = xdg::config().home().string() + "/ffmpeg_gui";
+    if (!std::filesystem::is_directory(config_dir) || !std::filesystem::exists(config_dir)) { // Check if src folder exists
+        std::filesystem::create_directory(config_dir); // create src folder
+    }
+    string config_file = std::move(config_dir) + "/config";
+
+    std::ifstream stream(config_file);
+
+    json config;
+    stream >> config;
+
+    Gtk::ComboBoxText* codec_comboBox = nullptr;
+    Form::getInstance().getBuilder()->get_widget("codec",codec_comboBox);
+    Gtk::ComboBoxText* container_comboBox = nullptr;
+    Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
+
+    codec_comboBox->set_active_id(config["codec"]);
+    container_comboBox->set_active_text(config["container"]);
+
+//    config["path_enable"] = path_enable->get_active();
+//    config["path_entry"] = path_entry->get_text();
+    path_enable->set_active(config["path_enable"]);
+    path_entry->set_text(config["path_entry"]);
+    path_entry->set_sensitive(config["path_enable"]);
+    open_folder->set_sensitive(config["path_enable"]);
+}
+
 int main(int argc, char *argv[])
 {
     cout << xdg::config().home() << endl;
@@ -270,17 +325,15 @@ int main(int argc, char *argv[])
            path_entry->set_text(dialog->get_filename());
        }
 
-//       cout << dialog->get_filename().empty() << endl;
-//       if(dialog->get_filename() )
-//       cout << dialog->get_filename().front() << " " << dialog->get_filename().back() << endl;
-//       path_entry->set_text(dialog->get_filename());
 
     });
-
+    restore_config();
     path_enable->signal_toggled().connect([](){
         path_entry->set_sensitive(path_enable->get_active());
         open_folder->set_sensitive(path_enable->get_active());
     });
+
+    window->signal_remove().connect(sigc::ptr_fun(save_config));
 
     window->show_all();
     int result = app->run(*window);
