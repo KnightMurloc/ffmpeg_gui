@@ -147,9 +147,10 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
         video_scroll->add(*video_list);
         right_box->add(*video_scroll);
     }
-
+    auto button_add = Gtk::make_managed<Gtk::Button>(Gtk::StockID("gtk-add"));
+    auto box_audio = Gtk::make_managed<Gtk::Box>();
     if(audio_streams.size() == 1){
-        right_box->add(*audio_streams[0]);
+        box_audio->add(*audio_streams[0]);
     }else{
         auto audio_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
         audio_scroll->set_hexpand(true);
@@ -160,14 +161,14 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
         }
 
         audio_scroll->add(*audio_list);
-        right_box->add(*audio_scroll);
+        box_audio->add(*audio_scroll);
     }
-
+    box_audio->add(*button_add);
+    right_box->add(*box_audio);
 
     box->add(*right_box);
-//    box->add(*videos);
-//    Gtk::
-//    row.set
+
+
 
     auto stock = Gtk::StockID("gtk-close");
 //    Gtk::BuiltinIconSize size{id: "button"};
