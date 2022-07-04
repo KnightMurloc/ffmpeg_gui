@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <dbus/dbus.h>
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -303,7 +304,6 @@ void restore_config(){
 
 int main(int argc, char *argv[])
 {
-    cout << xdg::config().home() << endl;
     auto app = Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
 
     Gtk::Window* window = nullptr;
@@ -350,13 +350,18 @@ int main(int argc, char *argv[])
     Gtk::Button* config_button = nullptr;
     Form::getInstance().getBuilder()->get_widget("config_button",config_button);
 
+    {
+        Gtk::Dialog *dialog = nullptr;
+        Form::getInstance().getBuilder()->get_widget("config", dialog);
+
+        dialog->add_button(Gtk::StockID("ok"), 0);
+    }
     config_button->signal_clicked().connect([](){
         Gtk::Dialog* dialog = nullptr;
         Form::getInstance().getBuilder()->get_widget("config",dialog);
-
         dialog->run();
 
-//        delete dialog;
+        dialog->close();
     });
 
     window->signal_remove().connect(sigc::ptr_fun(save_config));
