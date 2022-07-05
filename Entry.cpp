@@ -9,6 +9,7 @@
 #include <thread>
 #include <memory>
 #include <filesystem>
+#include <utility>
 
 using std::string;
 using std::thread;
@@ -125,7 +126,7 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
             }
             title += " (" + ((string) stream["codec_name"]) + ")";
 
-            auto name = Gtk::make_managed<Gtk::CheckButton>(title);
+            auto name = Gtk::make_managed<AudioStream>(title);
             name->set_active(true);
 
 //            audio_list->add(*name);
@@ -148,6 +149,7 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
         right_box->add(*video_scroll);
     }
     auto button_add = Gtk::make_managed<Gtk::Button>(Gtk::StockID("gtk-add"));
+    button_add->signal_clicked().connect(sigc::mem_fun(this,&Entry::add_audio_stream));
     auto box_audio = Gtk::make_managed<Gtk::Box>();
     if(audio_streams.size() == 1){
         box_audio->add(*audio_streams[0]);
@@ -187,7 +189,6 @@ Entry::Entry(std::string &path, json info) : Gtk::ListBoxRow(){
     string duration_str = info["format"]["duration"];
     this->duration = std::strtof(duration_str.c_str(), nullptr);
     std::setlocale (LC_NUMERIC,"");
-    this->info = std::move(info);
 //    this->file_name = std::move(file_name);
     this->full_path = path;
 }
@@ -354,3 +355,41 @@ int Entry::getEntryCount() {
 Gtk::Label *Entry::getTimeLabel() const {
     return time_label;
 }
+
+void Entry::add_audio_stream() {
+    auto dialog = Gtk::FileChooserNative::create(
+            "Please choose a audio stream",
+            Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN);
+
+    auto filter = Gtk::FileFilter::create();
+    filter->set_name("audio streams");
+    filter->add_pattern("*.mka");
+    filter->add_pattern(".mp3");
+    filter->add_pattern(".mp2");
+    filter->add_pattern(".opus");
+    filter->add_pattern(".acc");
+    filter->add_pattern(".ac3");
+    filter->add_pattern(".dts");
+    auto filter_any = Gtk::FileFilter::create();
+    filter_any->set_name("any");
+    filter_any->add_pattern("*");
+
+    dialog->add_filter(filter);
+    dialog->add_filter(filter_any);
+
+
+    if(dialog->run() == Gtk::RESPONSE_ACCEPT){
+        std::cout << dialog->get_filename() << std::endl;
+    }
+}
+
+bool AudioStream::isExternal1() const {
+    return isExternal;
+}
+
+const string &AudioStream::getPath() const {
+    return path;
+}
+
+AudioStream::AudioStream(const Glib::ustring &label, bool isExternal, string path) : CheckButton(
+        label), isExternal(isExternal), path(std::move(path)) {}

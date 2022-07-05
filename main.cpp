@@ -13,8 +13,6 @@
 #include "xdg/xdg.h"
 #include <filesystem>
 #include <fstream>
-#include <memory>
-#include <dbus/dbus.h>
 using nlohmann::json;
 using std::string;
 using std::cout;

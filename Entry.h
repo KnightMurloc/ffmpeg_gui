@@ -30,12 +30,13 @@ struct EncodeInfo{
     GPU gpu;
 };
 
+class AudioStream;
+
 class Entry : public Gtk::ListBoxRow {
     friend void callback(const FeedBack& feedBack, std::any data);
 private:
     static int entry_count;
     std::string full_path;
-    json info;
 
     std::vector<Gtk::CheckButton*> video_streams;
     std::vector<Gtk::CheckButton*> audio_streams;
@@ -51,6 +52,7 @@ private:
 
     void remove_self();
 
+    void add_audio_stream();
 
 public:
 
@@ -84,5 +86,16 @@ public:
     Gtk::Label *getTimeLabel() const;
 };
 
+class AudioStream : public Gtk::CheckButton {
+private:
+    bool isExternal = false;
+    std::string path;
+public:
+    AudioStream(const Glib::ustring &label, bool isExternal = false, std::string path = "");
+
+    bool isExternal1() const;
+
+    const std::string &getPath() const;
+};
 
 #endif //FFMPEG_GUI_ENTRY_H
