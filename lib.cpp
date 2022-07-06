@@ -33,7 +33,10 @@ int FFmpeg::run() {
     for(const auto& arg : preArgs){
         cmd += " " + arg;
     }
-    cmd += " -i \"" + input + "\"";
+    for(auto& file : input){
+        cmd += " -i \"" + file + "\"";
+    }
+//    cmd += " -i \"" + input + "\"";
     for(const auto& arg : args){
         cmd += " " + arg;
     }
@@ -217,14 +220,6 @@ void FFmpeg::setDebug(bool debug) {
     FFmpeg::debug = debug;
 }
 
-const string &FFmpeg::getInput() const {
-    return input;
-}
-
-void FFmpeg::setInput(const string input) {
-    FFmpeg::input = input;
-}
-
 const string &FFmpeg::getOutput() const {
     return output;
 }
@@ -259,7 +254,7 @@ std::string FFmpeg::make_thumbnail(std::string file,const json& info) {
     stringstream tmp;
     tmp << temp_directory_path().string() << "/" << std::hex << hashResult << ".png";
     FFmpeg ffmpeg;
-    ffmpeg.setInput(file);
+    ffmpeg.addInput(file);
     ffmpeg.addPreArg("-ss " + std::to_string(frame_time));
     ffmpeg.addArg("-vf scale=64:64");//TODO возвращать с сохранением пропорций
     ffmpeg.addArg("-vframes 1");
@@ -280,6 +275,10 @@ bool FFmpeg::heave_hwaccel(std::string& name) {
            name == "mpeg2" ||
            name == "vp8" ||
            name == "vp9";
+}
+
+void FFmpeg::addInput(const string& file) {
+    input.push_back(file);
 }
 
 

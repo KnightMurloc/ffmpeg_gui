@@ -203,14 +203,6 @@ void Entry::remove_self() {
 //    return file_name;
 //}
 
-const std::vector<Gtk::CheckButton *> &Entry::getVideoStreams() const {
-    return video_streams;
-}
-
-const std::vector<Gtk::CheckButton *> &Entry::getVideoAudio() const {
-    return audio_streams;
-}
-
 Gtk::ProgressBar *Entry::getProgressBar() const {
     return progressBar;
 }
@@ -289,14 +281,26 @@ void Entry::process(const EncodeInfo& param) {
         ffmpeg.addPreArg("-vaapi_device /dev/dri/renderD128");
     }
 
-    ffmpeg.setInput(this->full_path);
+    ffmpeg.addInput(this->full_path);
+
+
     ffmpeg.setOutput(path + file + "." + param.container);
     ffmpeg.addArg("-map 0");
     for(size_t i = 0; i < audio_streams.size(); i++){
-        auto& stream = audio_streams[i];
+        auto stream = audio_streams[i];
+
         if(!stream->get_active()){
             ffmpeg.addArg("-map -0:a:" + std::to_string(i));
         }
+    }
+
+    int j = 1;
+    for(auto stream : external_audio){
+        if(stream->get_active()) {
+            ffmpeg.addInput(stream->getPath());
+            ffmpeg.addArg("-map " + std::to_string(j) + ":a:0");
+        }
+        j++;
     }
 
     ffmpeg.addArg("-c:a " + param.audio_codec);
@@ -310,6 +314,8 @@ void Entry::process(const EncodeInfo& param) {
 
     if(param.gpu.vendor == Vendor::AMD){
         ffmpeg.addArg("-vf format=\"nv12|vaapi,hwupload\"");
+    }else{
+        ffmpeg.addArg("-pix_fmt yuv420p");
     }
 
     ffmpeg.setCallback(callback,this);
@@ -317,11 +323,12 @@ void Entry::process(const EncodeInfo& param) {
     if(ffmpeg.run()){
         std::cout << "fallback to software" << std::endl;
         ffmpeg = FFmpeg();
-        ffmpeg.setInput(this->full_path);
+        ffmpeg.addInput(this->full_path);
         ffmpeg.setOutput(path + file + "." + param.container);
         ffmpeg.addArg("-map 0");
         for(size_t i = 0; i < audio_streams.size(); i++){
             auto& stream = audio_streams[i];
+
             if(!stream->get_active()){
                 ffmpeg.addArg("-map -0:a:" + std::to_string(i));
             }
@@ -380,11 +387,48 @@ void Entry::add_audio_stream() {
 
     if(dialog->run() == Gtk::RESPONSE_ACCEPT){
         std::cout << dialog->get_filename() << std::endl;
+        std::string file_name = dialog->get_filename().substr(dialog->get_filename().find_last_of("/\\") + 1);
+        //TODO add case where no audio streams
+        if(audio_streams.size() == 1){
+            auto container = audio_streams[0]->get_parent();
+            auto button = audio_streams[0]->get_parent()->get_children()[1];
+            container->remove(*audio_streams[0]);
+            container->remove(*button);
+
+            auto audio_scroll = Gtk::make_managed<Gtk::ScrolledWindow>();
+            audio_scroll->set_hexpand(true);
+            auto audio_list = Gtk::make_managed<Gtk::ListBox>();
+
+            audio_list->add(*audio_streams[0]);
+
+            auto name = Gtk::make_managed<AudioStream>(file_name,true,dialog->get_filename());
+            name->set_active(true);
+
+            audio_list->add(*name);
+
+            audio_scroll->add(*audio_list);
+//            container->
+//            container->add(*audio_scroll);
+            container->add(*audio_scroll);
+            container->add(*button);
+            container->show_all();
+
+            external_audio.push_back(name);
+        }else{
+            auto container = dynamic_cast<Gtk::ListBox*>(audio_streams[0]->get_parent()->get_parent());
+            std::cout << container->get_name() << std::endl;
+            auto name = Gtk::make_managed<AudioStream>(file_name,true,dialog->get_filename());
+            name->set_active(true);
+            container->add(*name);
+            container->show_all();
+            external_audio.push_back(name);
+
+        }
     }
 }
 
-bool AudioStream::isExternal1() const {
-    return isExternal;
+bool AudioStream::isExternal() const {
+    return external;
 }
 
 const string &AudioStream::getPath() const {
@@ -392,4 +436,8 @@ const string &AudioStream::getPath() const {
 }
 
 AudioStream::AudioStream(const Glib::ustring &label, bool isExternal, string path) : CheckButton(
-        label), isExternal(isExternal), path(std::move(path)) {}
+        label), external(isExternal), path(std::move(path)) {}
+
+AudioStream::~AudioStream() {
+    std::cout << "test destroy 2" << std::endl;
+}

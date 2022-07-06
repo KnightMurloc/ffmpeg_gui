@@ -39,7 +39,8 @@ private:
     std::string full_path;
 
     std::vector<Gtk::CheckButton*> video_streams;
-    std::vector<Gtk::CheckButton*> audio_streams;
+    std::vector<AudioStream*> audio_streams;
+    std::vector<AudioStream*> external_audio;
 
     Gtk::ProgressBar* progressBar;
     Gtk::Entry* file_name_entry;
@@ -72,10 +73,6 @@ public:
 
 //    const std::string &getFileName() const;
 
-    const std::vector<Gtk::CheckButton *> &getVideoStreams() const;
-
-    const std::vector<Gtk::CheckButton *> &getVideoAudio() const;
-
     Gtk::ProgressBar *getProgressBar() const;
 
     float getDuration() const;
@@ -88,14 +85,16 @@ public:
 
 class AudioStream : public Gtk::CheckButton {
 private:
-    bool isExternal = false;
+    bool external = false;
     std::string path;
 public:
     AudioStream(const Glib::ustring &label, bool isExternal = false, std::string path = "");
 
-    bool isExternal1() const;
+    bool isExternal() const;
 
     const std::string &getPath() const;
+
+    virtual ~AudioStream();
 };
 
 #endif //FFMPEG_GUI_ENTRY_H

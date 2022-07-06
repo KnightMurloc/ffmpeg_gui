@@ -29,7 +29,7 @@ private:
     std::vector<std::string> args;
     std::vector<std::string> preArgs;
     bool debug = false;
-    std::string input;
+    std::vector<std::string> input;
     std::string output;
     std::function<void(const FeedBack&, std::any)> callback = nullptr;
     std::any data;
@@ -41,13 +41,11 @@ public:
 
     int run();
 
+    void addInput(const std::string& file);
+
     [[nodiscard]] bool isDebug() const;
 
     void setDebug(bool debug);
-
-    [[nodiscard]] const std::string &getInput() const;
-
-    void setInput(const std::string input);
 
     [[nodiscard]] const std::string &getOutput() const;
 
