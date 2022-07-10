@@ -34,7 +34,7 @@ private:
     std::function<void(const FeedBack&, std::any)> callback = nullptr;
     std::any data;
 public:
-    [[nodiscard]] static json probe(std::string& file);
+    [[nodiscard]] static json probe(const std::string& file);
     [[nodiscard]] static std::string make_thumbnail(std::string file,const json& info);
 
     static bool heave_hwaccel(std::string& name);

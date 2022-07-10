@@ -9,7 +9,7 @@ using std::filesystem::temp_directory_path;
 using std::filesystem::path;
 using std::any;
 
-json FFmpeg::probe(string& file) {
+json FFmpeg::probe(const string& file) {
 
     std::array<char, 256> buffer{};
     string cmd = "ffprobe -print_format json -show_streams -show_entries format=duration \"" + file + "\" 2> /dev/null";

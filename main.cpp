@@ -219,15 +219,19 @@ std::string UrlDecode(const std::string& value){
     return result;
 }
 
+void add_file(string& file){
+    json probe = FFmpeg::probe(file);
+    auto row = Gtk::make_managed<Entry>(file, std::move(probe));
+    list->add(*row);
+    row->show_all();
+}
+
 void callback(const Glib::RefPtr<Gdk::DragContext>& context,
               const int& x,
               const int& y, const Gtk::SelectionData& seldata, const unsigned int& info,const unsigned int& time){
     for(auto& uri : seldata.get_uris()){
         auto file = UrlDecode(uri);
-        json probe = FFmpeg::probe(file);
-        auto row = Gtk::make_managed<Entry>(file, std::move(probe));
-        list->add(*row);
-        row->show_all();
+        add_file(file);
     }
 
     //    for(auto url : seldata.get_data_as_string()){
@@ -360,6 +364,37 @@ int main(int argc, char *argv[])
         dialog->run();
 
         dialog->close();
+    });
+
+    Gtk::ImageMenuItem* open_button = nullptr;
+    Gtk::ImageMenuItem* open_settings = nullptr;
+    Form::getInstance().getBuilder()->get_widget("open_button",open_button);
+    Form::getInstance().getBuilder()->get_widget("open_settings",open_settings);
+
+    open_button->signal_activate().connect([](){
+        auto dialog = Gtk::FileChooserNative::create(
+                "Please choose a video file",
+                Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN);
+
+        auto filter = Gtk::FileFilter::create();
+        filter->set_name("video");
+        filter->add_pattern("*.mkv");
+        filter->add_pattern("*.avi");
+        filter->add_pattern("*.webm");
+        filter->add_pattern("*.mp4");
+        filter->add_pattern("*.m4v");
+        auto filter_any = Gtk::FileFilter::create();
+        filter_any->set_name("any");
+        filter_any->add_pattern("*");
+        dialog->add_filter(filter);
+        dialog->add_filter(filter_any);
+
+        dialog->set_select_multiple(true);
+        if(dialog->run() == Gtk::RESPONSE_ACCEPT){
+            for(auto& file : dialog->get_filenames()){
+                add_file(file);
+            }
+        }
     });
 
     window->signal_remove().connect(sigc::ptr_fun(save_config));

@@ -380,7 +380,6 @@ void Entry::add_audio_stream() {
     auto filter_any = Gtk::FileFilter::create();
     filter_any->set_name("any");
     filter_any->add_pattern("*");
-
     dialog->add_filter(filter);
     dialog->add_filter(filter_any);
 
