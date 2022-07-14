@@ -13,6 +13,7 @@
 #include "xdg/xdg.h"
 #include <filesystem>
 #include <fstream>
+#include "Settings.h"
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -24,15 +25,25 @@ Gtk::CheckButton* path_enable = nullptr;
 Gtk::Entry* path_entry = nullptr;
 Gtk::Button* open_folder = nullptr;
 
-string find_hw_codec(const string& codec, GPU& gpu){
+string find_hw_codec(const string& codec, GPU gpu){
+    auto settings = Settings::getInstance();
+
     if(codec == "h264"){
         switch (gpu.vendor) {
             case Vendor::NVIDIA:
                 return "h264_nvenc";
             case Vendor::AMD:
-                return "h264_vaapi";
+                if(settings.isUseVaapi()){
+                    return "h264_vaapi";
+                }else{
+                    return "h264_amf";
+                }
             case Vendor::INTEL:
-                return "h264_qsv";
+                if(settings.isUseVaapi()){
+                    return "h264_vaapi";
+                }else{
+                    return "h264_qsv";
+                }
             default:
                 return codec;
         }
@@ -43,27 +54,34 @@ string find_hw_codec(const string& codec, GPU& gpu){
             case Vendor::NVIDIA:
                 return "hevc_nvenc";
             case Vendor::AMD:
-                return "hevc_vaapi";
+                if(settings.isUseVaapi()){
+                    return "hevc_vaapi";
+                }else{
+                    return "hevc_amf";
+                }
             case Vendor::INTEL:
-                return "hevc_qsv";
+                if(settings.isUseVaapi()){
+                    return "hevc_vaapi";
+                }else{
+                    return "hevc_qsv";
+                }
             default:
                 return codec;
         }
     }
 
     if(codec == "mpeg2video"){
-        switch (gpu.vendor) {
-            case Vendor::AMD:
-                return "mpeg2_vaapi";
-            case Vendor::INTEL:
-                return "mpeg2_qsv";
-            default:
-                return codec;
+
+        if(settings.isUseVaapi() && gpu.vendor != Vendor::NVIDIA){
+            return "mpeg2_vaapi";
+        }else{
+            return codec;
         }
     }
 
     if(codec == "libvpx"){
         switch (gpu.vendor) {
+            case Vendor::INTEL:
             case Vendor::AMD:
                 return "vp8_vaapi";
             default:
@@ -76,7 +94,11 @@ string find_hw_codec(const string& codec, GPU& gpu){
             case Vendor::AMD:
                 return "vp9_vaapi";
             case Vendor::INTEL:
-                return "vp9_qsv";
+                if(settings.isUseVaapi()){
+                    return "vp9_vaapi";
+                }else {
+                    return "vp9_qsv";
+                }
             default:
                 return codec;
         }
@@ -124,16 +146,16 @@ void process(vector<Gtk::Widget*> rows){
     string codec = codec_comboBox->get_active_id();
     string container = container_comboBox->get_active_text();
 
-    GPU gpu = get_gpu_list().front();
+    auto settings = Settings::getInstance();
 
-    string hw_codec = find_hw_codec(codec,gpu);
+    string hw_codec = find_hw_codec(codec,settings.getGpu());
     cout << codec << " " << hw_codec << endl;
 
     EncodeInfo param;
     param.codec = codec;
     param.hw_codec = hw_codec;
     param.container = container;
-    param.gpu = gpu;
+    param.gpu = settings.getGpu();
 
     if(path_enable->get_active()){
         param.path = path_entry->get_text();
@@ -270,6 +292,17 @@ void save_config(Gtk::Widget* self){
     config["path_enable"] = path_enable->get_active();
     config["path_entry"] = path_entry->get_text();
 
+    json settings_json;
+    auto& settings = Settings::getInstance();
+    settings_json["gpu"]["name"] = settings.getGpu().name;
+    settings_json["gpu"]["vendor"] = settings.getGpu().vendor;
+
+    settings_json["ffmpeg_path"] = settings.getFfmpegPath();
+    settings_json["ffprobe_path"] = settings.getFfprobePath();
+    settings_json["use_vaapi"] = settings.isUseVaapi();
+
+    config["settings"] = settings_json;
+
     std::ofstream stream(config_file);
 
     stream << config;
@@ -281,18 +314,19 @@ void restore_config(){
     if (!std::filesystem::is_directory(config_dir) || !std::filesystem::exists(config_dir)) { // Check if src folder exists
         std::filesystem::create_directory(config_dir); // create src folder
     }
-    string config_file = std::move(config_dir) + "/config";
+    string config_file = config_dir + "/config";
 
     std::ifstream stream(config_file);
-
+    auto builder = Form::getInstance().getBuilder();
+    auto& settings = Settings::getInstance();
     if(stream) {
         json config;
         stream >> config;
 
         Gtk::ComboBoxText *codec_comboBox = nullptr;
-        Form::getInstance().getBuilder()->get_widget("codec", codec_comboBox);
+        builder->get_widget("codec", codec_comboBox);
         Gtk::ComboBoxText *container_comboBox = nullptr;
-        Form::getInstance().getBuilder()->get_widget("container", container_comboBox);
+        builder->get_widget("container", container_comboBox);
 
         codec_comboBox->set_active_id(config["codec"]);
         container_comboBox->set_active_text(config["container"]);
@@ -301,6 +335,77 @@ void restore_config(){
         path_entry->set_text(config["path_entry"]);
         path_entry->set_sensitive(config["path_enable"]);
         open_folder->set_sensitive(config["path_enable"]);
+
+        json settings_json = config["settings"];
+
+        GPU gpu{
+            .name = settings_json["gpu"]["name"],
+            .vendor = settings_json["gpu"]["vendor"]
+        };
+        settings.setGpu(gpu);
+        settings.setFfmpegPath(settings_json["ffmpeg_path"]);
+        settings.setFfprobePath(settings_json["ffprobe_path"]);
+        settings.setUseVaapi(settings_json["use_vaapi"]);
+
+    }else {
+        GPU gpu = get_gpu_list().front();
+        settings.setGpu(gpu);
+        cout << settings.getGpu().name << endl;
+
+        string appdir = std::getenv("APPDIR") ? std::getenv("APPDIR") : "";
+        //if app run as appimage
+        if (!appdir.empty()) {
+            std::filesystem::path ffmpeg_path{appdir + "/usr/bin/ffmpeg"};
+            std::filesystem::path ffprobe_path{appdir + "/usr/bin/ffprobe"};
+            if (std::filesystem::exists(ffmpeg_path)) {
+                settings.setFfmpegPath(ffmpeg_path.string());
+            } else {
+                //TODO use which find ffmpeg binary
+                settings.setFfmpegPath("/bin/ffmpeg");
+            }
+
+            if (std::filesystem::exists(ffprobe_path)) {
+                settings.setFfprobePath(ffprobe_path.string());
+            } else {
+                //TODO use which find ffprobe binary
+                settings.setFfprobePath("/bin/ffprobe");
+            }
+
+        } else {
+            //TODO use which find ffmpeg binary
+            settings.setFfmpegPath("/bin/ffmpeg");
+            //TODO use which find ffprobe binary
+            settings.setFfprobePath("/bin/ffprobe");
+
+            Gtk::Entry *ffmpeg_entry = nullptr;
+            Gtk::Entry *ffprobe_entry = nullptr;
+
+            builder->get_widget("ffmpeg_entry", ffmpeg_entry);
+            builder->get_widget("ffprobe_entry", ffprobe_entry);
+
+            ffmpeg_entry->set_text("/bin/ffmpeg");
+            ffprobe_entry->set_text("/bin/ffprobe");
+        }
+
+
+    }
+
+    Gtk::Label *gpu_name_label = nullptr;
+    Gtk::CheckButton *use_vaapi_check = nullptr;
+    Gtk::Label *api_name_label = nullptr;
+    builder->get_widget("gpu_name_label", gpu_name_label);
+    builder->get_widget("use_vaapi_check", use_vaapi_check);
+    builder->get_widget("api_name_label", api_name_label);
+    gpu_name_label->set_text(settings.getGpu().name);
+    if (settings.getGpu().vendor == Vendor::INTEL) {
+        api_name_label->set_text("use vaapi instead of quicksync");
+    } else if (settings.getGpu().vendor == Vendor::AMD) {
+        api_name_label->set_text("use vaapi instead of AMF");
+    }else{
+        api_name_label->set_text("use vaapi");
+        use_vaapi_check->set_active(false);
+        use_vaapi_check->set_sensitive(false);
+        settings.setUseVaapi(false);
     }
 }
 
@@ -365,7 +470,6 @@ int main(int argc, char *argv[])
 
         dialog->close();
     });
-
     Gtk::ImageMenuItem* open_button = nullptr;
     Gtk::ImageMenuItem* open_settings = nullptr;
     Form::getInstance().getBuilder()->get_widget("open_button",open_button);
@@ -395,6 +499,12 @@ int main(int argc, char *argv[])
                 add_file(file);
             }
         }
+    });
+
+    open_settings->signal_activate().connect([](){
+        Gtk::Dialog* dialog = nullptr;
+        Form::getInstance().getBuilder()->get_widget("Settings",dialog);
+        dialog->run();
     });
 
     window->signal_remove().connect(sigc::ptr_fun(save_config));
