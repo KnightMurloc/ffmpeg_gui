@@ -308,8 +308,11 @@ void Entry::process(const EncodeInfo& param) {
         ffmpeg.addArg("-b:a " + param.audio_bitrate);
     }
     ffmpeg.addArg("-c:v " + param.hw_codec); //first try hw codec
-    if(!param.video_bitrate.empty()){
-        ffmpeg.addArg("-b:v " + param.video_bitrate);
+//    if(!param.video_bitrate.empty()){
+//        ffmpeg.addArg("-b:v " + param.video_bitrate);
+//    }
+    for(auto& option : param.extra_options){
+        ffmpeg.addArg(option);
     }
 
     if(param.gpu.vendor == Vendor::AMD){
@@ -339,9 +342,14 @@ void Entry::process(const EncodeInfo& param) {
             ffmpeg.addArg("-b:a " + param.audio_bitrate);
         }
         ffmpeg.addArg("-c:v " + param.codec);
-        if(!param.video_bitrate.empty()){
-            ffmpeg.addArg("-b:v " + param.video_bitrate);
+//        if(!param.video_bitrate.empty()){
+//            ffmpeg.addArg("-b:v " + param.video_bitrate);
+//        }
+        for(auto& option : param.extra_options){
+            ffmpeg.addArg(option);
         }
+
+
         ffmpeg.setCallback(callback,this);
         ffmpeg.run();
     }//TODO check if software are failed and show error

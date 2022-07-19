@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include "Settings.h"
+#include "config.h"
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -135,13 +136,15 @@ void process(vector<Gtk::Widget*> rows){
     Gtk::ComboBoxText* container_comboBox = nullptr;
     Form::getInstance().getBuilder()->get_widget("container",container_comboBox);
 
-    Gtk::Entry* video_bitrate_entry = nullptr;
+//    Gtk::Entry* video_bitrate_entry = nullptr;
     Gtk::Entry* audio_bitrate_entry = nullptr;
     Gtk::ComboBoxText* audio_codec = nullptr;
+    Gtk::ListBox* test_list = nullptr;
 
-    Form::getInstance().getBuilder()->get_widget("video_bitrate_entry",video_bitrate_entry);
+//    Form::getInstance().getBuilder()->get_widget("video_bitrate_entry",video_bitrate_entry);
     Form::getInstance().getBuilder()->get_widget("audio_bitrate_entry",audio_bitrate_entry);
     Form::getInstance().getBuilder()->get_widget("audio_codec",audio_codec);
+    Form::getInstance().getBuilder()->get_widget("test_list",test_list);
 
     string codec = codec_comboBox->get_active_id();
     string container = container_comboBox->get_active_text();
@@ -161,8 +164,17 @@ void process(vector<Gtk::Widget*> rows){
         param.path = path_entry->get_text();
     }
 
-    if(video_bitrate_entry->get_text() != "-1"){
-        param.video_bitrate = video_bitrate_entry->get_text();
+//    if(video_bitrate_entry->get_text() != "-1"){
+//        param.video_bitrate = video_bitrate_entry->get_text();
+//    }
+
+    for(auto row : test_list->get_children()){
+        auto* option = dynamic_cast<Param*>(row);
+
+//        cout << option->getValue() << endl;
+        if(!option->isDefault()) {
+            param.extra_options.push_back("-" + option->getParam() + " " + option->getValue());
+        }
     }
 
     if(audio_bitrate_entry->get_text() != "-1"){
@@ -171,7 +183,6 @@ void process(vector<Gtk::Widget*> rows){
 
     param.audio_codec = audio_codec->get_active_text();
     cout << param.audio_codec << endl;
-    cout << param.video_bitrate << endl;
 
     std::vector<std::thread> threads(std::thread::hardware_concurrency());
 
@@ -409,6 +420,66 @@ void restore_config(){
     }
 }
 
+void show_config(){
+    auto builder = Form::getInstance().getBuilder();
+    Gtk::Dialog* dialog = nullptr;
+    builder->get_widget("config",dialog);
+
+    Gtk::ListBox* video_config = nullptr;
+    builder->get_widget("test_list",video_config);
+
+//    video_config->set_data("codec"/)
+
+    Gtk::ComboBoxText* codec_comboBox = nullptr;
+    Form::getInstance().getBuilder()->get_widget("codec",codec_comboBox);
+
+    cout << video_config->get_data("codec") << " " << codec_comboBox->get_active_id() << " ";
+    if(video_config->get_data("codec")){
+        cout <<
+        (char*) video_config->get_data("codec") <<
+        " " << (codec_comboBox->get_active_id() == (char*) video_config->get_data("codec") ? "true" : "false") << endl;
+    }else{
+        cout << endl;
+    }
+    if(video_config->get_data("codec") && codec_comboBox->get_active_id() != (char*) video_config->get_data("codec")){
+        for(auto& row : video_config->get_children()){
+            video_config->remove(*row);
+        }
+    }
+    if(!video_config->get_data("codec") || codec_comboBox->get_active_id() != (char*) video_config->get_data("codec")){
+        delete[] (char*) video_config->get_data("codec");
+        video_config->set_data("codec", (void *) strdup(codec_comboBox->get_active_id().c_str()));
+        cout << (char*) video_config->get_data("codec") << endl;
+
+        json bitrate_json;
+        bitrate_json["type"] = "entry";
+        bitrate_json["default"] = "-1";
+        bitrate_json["param"] = "b:v";
+
+        auto bitrate = Gtk::make_managed<Param>("bitrate", bitrate_json);
+        video_config->add(*bitrate);
+
+        std::ifstream stream("../codecs.json");
+
+        json codecs;
+        stream >> codecs;
+
+        if(codecs.find(codec_comboBox->get_active_id()) != codecs.end()){
+            json codec = codecs[codec_comboBox->get_active_id()];
+            for(const auto& entry : codec.items()){
+                auto param = Gtk::make_managed<Param>(entry.key(), entry.value());
+                video_config->add(*param);
+            }
+        }
+
+        video_config->show_all();
+    }
+
+    dialog->run();
+
+    dialog->close();
+}
+
 int main(int argc, char *argv[])
 {
     auto app = Gtk::Application::create(argc, argv,"org.gtkmm.examples.base");
@@ -463,13 +534,7 @@ int main(int argc, char *argv[])
 
         dialog->add_button(Gtk::StockID("ok"), 0);
     }
-    config_button->signal_clicked().connect([](){
-        Gtk::Dialog* dialog = nullptr;
-        Form::getInstance().getBuilder()->get_widget("config",dialog);
-        dialog->run();
-
-        dialog->close();
-    });
+    config_button->signal_clicked().connect(sigc::ptr_fun(show_config));
     Gtk::ImageMenuItem* open_button = nullptr;
     Gtk::ImageMenuItem* open_settings = nullptr;
     Form::getInstance().getBuilder()->get_widget("open_button",open_button);

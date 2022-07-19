@@ -23,7 +23,7 @@ struct EncodeInfo{
 
     std::string path;
 
-    std::string video_bitrate;
+    std::vector<std::string> extra_options;
     std::string audio_codec;
     std::string audio_bitrate;
 

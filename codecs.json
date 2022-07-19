@@ -77,7 +77,7 @@
       ]
     }
   },
-  "vp8": {
+  "libvpx": {
     "speed": {
       "type": "range",
       "min": -16,
@@ -87,20 +87,20 @@
     "quality": {
       "type": "map",
       "values": {
-        "best": 0,
-        "good": 1000000,
-        "realtime": 1
+        "best": "0",
+        "good": "1000000",
+        "realtime": "1"
       },
       "default": "good"
     }
   },
-  "vp9": {
+  "libvpx-vp9": {
     "tune-content": {
       "type": "map",
       "values": {
-        "default": 0,
-        "screen": 1,
-        "film": 2
+        "default": "0",
+        "screen": "1",
+        "film": "2"
       },
       "default": "default"
     },
@@ -113,9 +113,9 @@
     "quality": {
       "type": "map",
       "values": {
-        "best": 0,
-        "good": 1000000,
-        "realtime": 1
+        "best": "0",
+        "good": "1000000",
+        "realtime": "1"
       },
       "default": "good"
     }
