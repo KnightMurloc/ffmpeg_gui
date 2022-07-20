@@ -328,7 +328,7 @@ void Entry::process(const EncodeInfo& param) {
     if(ffmpeg.run()){
         std::cout << "fallback to software" << std::endl;
         ffmpeg = FFmpeg();
-        ffmpeg.setErrFile("/tmp/" + std::to_string(entry_count) + ".log");
+        ffmpeg.setErrFile(std::filesystem::temp_directory_path().string() + "/" + std::to_string(entry_count) + ".log");
         ffmpeg.setFfmpegBin(Settings::getInstance().getFfmpegPath());
         ffmpeg.addInput(this->full_path);
         ffmpeg.setOutput(path + file + "." + param.container);
@@ -356,7 +356,7 @@ void Entry::process(const EncodeInfo& param) {
         ffmpeg.setCallback(callback,this);
         if(ffmpeg.run()){
             std::ifstream err_file;
-            err_file.open("/tmp/" + std::to_string(entry_count) + ".log");
+            err_file.open(ffmpeg.getErrFile());
             std::stringstream buffer;
             buffer << err_file.rdbuf();
             Gtk::MessageDialog dialog(buffer.str());
@@ -365,7 +365,7 @@ void Entry::process(const EncodeInfo& param) {
             err_file.close();
         }
     }
-    std::filesystem::remove("/tmp/" + std::to_string(entry_count) + ".log");
+    std::filesystem::remove(ffmpeg.getErrFile());
 }
 
 float Entry::getDuration() const {
