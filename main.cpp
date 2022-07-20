@@ -401,6 +401,14 @@ void restore_config(){
 
     }
 
+    Gtk::Entry* ffmpeg_entry = nullptr;
+    Gtk::Entry* ffprobe_entry = nullptr;
+    builder->get_widget("ffmpeg_entry", ffmpeg_entry);
+    builder->get_widget("ffprobe_entry", ffprobe_entry);
+    ffmpeg_entry->set_text(settings.getFfmpegPath());
+    ffprobe_entry->set_text(settings.getFfprobePath());
+
+
     Gtk::Label *gpu_name_label = nullptr;
     Gtk::CheckButton *use_vaapi_check = nullptr;
     Gtk::Label *api_name_label = nullptr;
@@ -426,7 +434,7 @@ void show_config(){
     builder->get_widget("config",dialog);
 
     Gtk::ListBox* video_config = nullptr;
-    builder->get_widget("test_list",video_config);
+    builder->get_widget("video_config",video_config);
 
 //    video_config->set_data("codec"/)
 
@@ -528,12 +536,15 @@ int main(int argc, char *argv[])
     Gtk::Button* config_button = nullptr;
     Form::getInstance().getBuilder()->get_widget("config_button",config_button);
 
-    {
-        Gtk::Dialog *dialog = nullptr;
-        Form::getInstance().getBuilder()->get_widget("config", dialog);
+    Gtk::Dialog *dialog = nullptr;
+    Form::getInstance().getBuilder()->get_widget("config", dialog);
 
-        dialog->add_button(Gtk::StockID("ok"), 0);
-    }
+    dialog->add_button(Gtk::StockID("ok"), 0);
+
+    Gtk::Dialog* settings = nullptr;
+    Form::getInstance().getBuilder()->get_widget("Settings", settings);
+    settings->add_button(Gtk::StockID("ok"), 0);
+
     config_button->signal_clicked().connect(sigc::ptr_fun(show_config));
     Gtk::ImageMenuItem* open_button = nullptr;
     Gtk::ImageMenuItem* open_settings = nullptr;
@@ -570,6 +581,8 @@ int main(int argc, char *argv[])
         Gtk::Dialog* dialog = nullptr;
         Form::getInstance().getBuilder()->get_widget("Settings",dialog);
         dialog->run();
+
+        dialog->close();
     });
 
     window->signal_remove().connect(sigc::ptr_fun(save_config));
