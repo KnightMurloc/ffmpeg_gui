@@ -10,7 +10,7 @@
 using std::string;
 
 Form::Form() {
-    builder = Gtk::Builder::create_from_file(main_ui);
+    builder = Gtk::Builder::create_from_file(Glib::canonicalize_filename(main_ui));
 }
 
 
