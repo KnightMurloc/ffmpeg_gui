@@ -4,6 +4,3 @@
 [submodule "gpu_detect"]
     path = gpu_detect
     url = https://github.com/KnightMurloc/gpu_detect
-[submodule "xdg"]
-    path = xdg
-    url = https://github.com/vosst/xdg
