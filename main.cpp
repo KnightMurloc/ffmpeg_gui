@@ -452,7 +452,7 @@ void show_config(){
         auto bitrate = Gtk::make_managed<Param>("bitrate", bitrate_json);
         video_config->add(*bitrate);
 
-        std::ifstream stream(Glib::canonicalize_filename(codecs_file));
+        std::ifstream stream(Glib::canonicalize_filename(codecs_file,std::getenv("APPDIR")));
 
         json codecs;
         stream >> codecs;
