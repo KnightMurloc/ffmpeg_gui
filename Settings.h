@@ -52,9 +52,6 @@ public:
     }
 };
 
-Settings &Settings::getInstance() {
-    static Settings settings;
-    return settings;
-}
+
 
 #endif //FFMPEG_GUI_SETTINGS_H

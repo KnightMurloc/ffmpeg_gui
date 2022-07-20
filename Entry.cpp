@@ -10,6 +10,8 @@
 #include <memory>
 #include <filesystem>
 #include <utility>
+#include <fstream>
+#include "Settings.h"
 
 using std::string;
 using std::thread;
@@ -276,7 +278,7 @@ void Entry::process(const EncodeInfo& param) {
     string file = file_name_entry->get_text();
 
     FFmpeg ffmpeg;
-
+    ffmpeg.setFfmpegBin(Settings::getInstance().getFfmpegPath());
     if(param.gpu.vendor == Vendor::AMD){
         ffmpeg.addPreArg("-vaapi_device /dev/dri/renderD128");
     }
@@ -326,6 +328,8 @@ void Entry::process(const EncodeInfo& param) {
     if(ffmpeg.run()){
         std::cout << "fallback to software" << std::endl;
         ffmpeg = FFmpeg();
+        ffmpeg.setErrFile("/tmp/" + std::to_string(entry_count) + ".log");
+        ffmpeg.setFfmpegBin(Settings::getInstance().getFfmpegPath());
         ffmpeg.addInput(this->full_path);
         ffmpeg.setOutput(path + file + "." + param.container);
         ffmpeg.addArg("-map 0");
@@ -349,10 +353,19 @@ void Entry::process(const EncodeInfo& param) {
             ffmpeg.addArg(option);
         }
 
-
         ffmpeg.setCallback(callback,this);
-        ffmpeg.run();
-    }//TODO check if software are failed and show error
+        if(ffmpeg.run()){
+            std::ifstream err_file;
+            err_file.open("/tmp/" + std::to_string(entry_count) + ".log");
+            std::stringstream buffer;
+            buffer << err_file.rdbuf();
+            Gtk::MessageDialog dialog(buffer.str());
+
+            dialog.run();
+            err_file.close();
+        }
+    }
+    std::filesystem::remove("/tmp/" + std::to_string(entry_count) + ".log");
 }
 
 float Entry::getDuration() const {

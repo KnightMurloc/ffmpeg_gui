@@ -15,6 +15,6 @@ link_directories(${GTKMM_LIBRARY_DIRS})
 include_directories(${GTKMM_INCLUDE_DIRS})
 #message(${GTKMM_INCLUDE_DIRS})
 
-add_executable(ffmpeg_gui main.cpp lib.cpp lib.h Entry.cpp Entry.h Form.cpp Form.h Settings.h config.cpp config.h)
+add_executable(ffmpeg_gui main.cpp lib.cpp lib.h Entry.cpp Entry.h Form.cpp Form.h Settings.h config.cpp config.h Settings.cpp)
 target_link_libraries(ffmpeg_gui ${GTKMM_LIBRARIES} gpu_detect xdg)
 target_include_directories(ffmpeg_gui PRIVATE json/include)

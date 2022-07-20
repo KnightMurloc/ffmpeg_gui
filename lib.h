@@ -26,6 +26,9 @@ class FeedBack;
 
 class FFmpeg{
 private:
+    std::string ffmpeg_bin;
+    std::string ffprobe_bin;
+
     std::vector<std::string> args;
     std::vector<std::string> preArgs;
     bool debug = false;
@@ -33,6 +36,8 @@ private:
     std::string output;
     std::function<void(const FeedBack&, std::any)> callback = nullptr;
     std::any data;
+
+    std::string err_file;
 public:
     [[nodiscard]] static json probe(const std::string& file);
     [[nodiscard]] static std::string make_thumbnail(std::string file,const json& info);
@@ -57,6 +62,18 @@ public:
 
     void addArg(std::string arg);
     void addPreArg(std::string arg);
+
+    [[nodiscard]] const std::string &getFfmpegBin() const;
+
+    void setFfmpegBin(const std::string &ffmpegBin);
+
+    [[nodiscard]] const std::string &getFfprobeBin() const;
+
+    void setFfprobeBin(const std::string &ffprobeBin);
+
+    [[nodiscard]] const std::string &getErrFile() const;
+
+    void setErrFile(const std::string &errFile);
 };
 
 class FeedBack{

@@ -12,6 +12,7 @@ using std::any;
 json FFmpeg::probe(const string& file) {
 
     std::array<char, 256> buffer{};
+    //TODO get ffprobe path from settings
     string cmd = "ffprobe -print_format json -show_streams -show_entries format=duration \"" + file + "\" 2> /dev/null";
     std::cout << cmd << std::endl;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
@@ -29,7 +30,7 @@ json FFmpeg::probe(const string& file) {
 }
 
 int FFmpeg::run() {
-    string cmd = "ffmpeg -progress - -y ";
+    string cmd = ffmpeg_bin + " -hide_banner -loglevel warning -progress - -y ";
     for(const auto& arg : preArgs){
         cmd += " " + arg;
     }
@@ -42,8 +43,10 @@ int FFmpeg::run() {
     }
 
     cmd += " \"" + output + "\"";
-
-    if(!debug){
+    std::cout << err_file.empty() << std::endl;
+    if(!err_file.empty()){
+        cmd += " 2> " + err_file;
+    }else if(!debug){
         cmd += " 2> /dev/null";
     }
 //    cmd += " | awk -F \"=\" '{print $2}'";
@@ -279,6 +282,30 @@ bool FFmpeg::heave_hwaccel(std::string& name) {
 
 void FFmpeg::addInput(const string& file) {
     input.push_back(file);
+}
+
+const string &FFmpeg::getFfmpegBin() const {
+    return ffmpeg_bin;
+}
+
+void FFmpeg::setFfmpegBin(const string &ffmpegBin) {
+    ffmpeg_bin = ffmpegBin;
+}
+
+const string &FFmpeg::getFfprobeBin() const {
+    return ffprobe_bin;
+}
+
+void FFmpeg::setFfprobeBin(const string &ffprobeBin) {
+    ffprobe_bin = ffprobeBin;
+}
+
+const string &FFmpeg::getErrFile() const {
+    return err_file;
+}
+
+void FFmpeg::setErrFile(const string &errFile) {
+    err_file = errFile;
 }
 
 
