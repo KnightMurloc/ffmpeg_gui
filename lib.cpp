@@ -2,6 +2,7 @@
 #include <sstream>
 #include <hash_fun.h>
 #include <filesystem>
+#include "Settings.h"
 
 using std::stringstream;
 using std::string;
@@ -12,8 +13,7 @@ using std::any;
 json FFmpeg::probe(const string& file) {
 
     std::array<char, 256> buffer{};
-    //TODO get ffprobe path from settings
-    string cmd = "ffprobe -print_format json -show_streams -show_entries format=duration \"" + file + "\" 2> /dev/null";
+    string cmd = Settings::getInstance().getFfprobePath() + " -print_format json -show_streams -show_entries format=duration \"" + file + "\" 2> /dev/null";
     std::cout << cmd << std::endl;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
     if (!pipe) {

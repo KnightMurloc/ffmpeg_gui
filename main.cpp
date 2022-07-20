@@ -141,12 +141,12 @@ void process(vector<Gtk::Widget*> rows){
 //    Gtk::Entry* video_bitrate_entry = nullptr;
     Gtk::Entry* audio_bitrate_entry = nullptr;
     Gtk::ComboBoxText* audio_codec = nullptr;
-    Gtk::ListBox* test_list = nullptr;
+    Gtk::ListBox* video_config = nullptr;
 
 //    Form::getInstance().getBuilder()->get_widget("video_bitrate_entry",video_bitrate_entry);
     Form::getInstance().getBuilder()->get_widget("audio_bitrate_entry",audio_bitrate_entry);
     Form::getInstance().getBuilder()->get_widget("audio_codec",audio_codec);
-    Form::getInstance().getBuilder()->get_widget("test_list",test_list);
+    Form::getInstance().getBuilder()->get_widget("video_config", video_config);
 
     string codec = codec_comboBox->get_active_id();
     string container = container_comboBox->get_active_text();
@@ -170,7 +170,7 @@ void process(vector<Gtk::Widget*> rows){
 //        param.video_bitrate = video_bitrate_entry->get_text();
 //    }
 
-    for(auto row : test_list->get_children()){
+    for(auto row : video_config->get_children()){
         auto* option = dynamic_cast<Param*>(row);
 
 //        cout << option->getValue() << endl;
@@ -293,8 +293,10 @@ void save_config(Gtk::Widget* self){
     settings_json["gpu"]["name"] = settings.getGpu().name;
     settings_json["gpu"]["vendor"] = settings.getGpu().vendor;
 
-    settings_json["ffmpeg_path"] = settings.getFfmpegPath();
-    settings_json["ffprobe_path"] = settings.getFfprobePath();
+    if(std::getenv("APPDIR") == nullptr) {
+        settings_json["ffmpeg_path"] = settings.getFfmpegPath();
+        settings_json["ffprobe_path"] = settings.getFfprobePath();
+    }
     settings_json["use_vaapi"] = settings.isUseVaapi();
 
     config["settings"] = settings_json;
@@ -339,8 +341,27 @@ void restore_config(){
             .vendor = settings_json["gpu"]["vendor"]
         };
         settings.setGpu(gpu);
-        settings.setFfmpegPath(settings_json["ffmpeg_path"]);
-        settings.setFfprobePath(settings_json["ffprobe_path"]);
+        if(std::getenv("APPDIR") == nullptr) {
+            settings.setFfmpegPath(settings_json["ffmpeg_path"]);
+            settings.setFfprobePath(settings_json["ffprobe_path"]);
+        }else{
+            string appdir = std::getenv("APPDIR") ? std::getenv("APPDIR") : "";
+            std::filesystem::path ffmpeg_path{appdir + "/usr/bin/ffmpeg"};
+            std::filesystem::path ffprobe_path{appdir + "/usr/bin/ffprobe"};
+            if (std::filesystem::exists(ffmpeg_path)) {
+                settings.setFfmpegPath(ffmpeg_path.string());
+            } else {
+                //TODO use which find ffmpeg binary
+                settings.setFfmpegPath("/bin/ffmpeg");
+            }
+
+            if (std::filesystem::exists(ffprobe_path)) {
+                settings.setFfprobePath(ffprobe_path.string());
+            } else {
+                //TODO use which find ffprobe binary
+                settings.setFfprobePath("/bin/ffprobe");
+            }
+        }
         settings.setUseVaapi(settings_json["use_vaapi"]);
 
     }else {
