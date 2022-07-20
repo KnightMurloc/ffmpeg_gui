@@ -5,9 +5,9 @@
 #include "Form.h"
 #include <string>
 
-using std::string;
+#include "build_config.h"
 
-const string main_ui = "../main.ui";
+using std::string;
 
 Form::Form() {
     builder = Gtk::Builder::create_from_file(main_ui);

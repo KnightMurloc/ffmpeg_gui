@@ -12,9 +12,21 @@ pkg_check_modules(GTKMM gtkmm-3.0)
 
 link_directories(${GTKMM_LIBRARY_DIRS})
 
-include_directories(${GTKMM_INCLUDE_DIRS})
+include_directories(${GTKMM_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
+
+set(DATA_PATH "..")
+configure_file(build_config.h.in build_config.h)
+
 #message(${GTKMM_INCLUDE_DIRS})
 
-add_executable(ffmpeg_gui main.cpp lib.cpp lib.h Entry.cpp Entry.h Form.cpp Form.h Settings.h config.cpp config.h Settings.cpp)
+add_executable(ffmpeg_gui
+        main.cpp
+        lib.cpp lib.h
+        Entry.cpp Entry.h
+        Form.cpp Form.h
+        Settings.h Settings.cpp
+        config.cpp config.h
+        build_config.h
+        )
 target_link_libraries(ffmpeg_gui ${GTKMM_LIBRARIES} gpu_detect xdg)
 target_include_directories(ffmpeg_gui PRIVATE json/include)

@@ -15,6 +15,8 @@
 #include <fstream>
 #include "Settings.h"
 #include "config.h"
+#include "build_config.h"
+
 using nlohmann::json;
 using std::string;
 using std::cout;
@@ -266,23 +268,6 @@ void callback(const Glib::RefPtr<Gdk::DragContext>& context,
         auto file = UrlDecode(uri);
         add_file(file);
     }
-
-    //    for(auto url : seldata.get_data_as_string()){
-//        cout << url << endl;
-//    }
-
-//    cout << UrlDecode(seldata.get_data_as_string()) << endl;
-
-    //    std::istringstream files(seldata.get_data_as_string());
-//
-//    cout << files.str() << endl;
-//    string file;
-//    while(std::getline(files,file,'\n')){
-//        json probe = FFmpeg::probe(file);
-//        auto row = Gtk::make_managed<Entry>(file, std::move(probe));
-//        list->add(*row);
-//        row->show_all();
-//    }
 }
 
 void save_config(Gtk::Widget* self){
@@ -467,7 +452,7 @@ void show_config(){
         auto bitrate = Gtk::make_managed<Param>("bitrate", bitrate_json);
         video_config->add(*bitrate);
 
-        std::ifstream stream("../codecs.json");
+        std::ifstream stream(codecs_file);
 
         json codecs;
         stream >> codecs;

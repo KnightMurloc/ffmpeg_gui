@@ -1,0 +1,13 @@
+//
+// Created by victor on 20.07.2022.
+//
+
+#ifndef FFMPEG_GUI_BUILD_CONFIG_H_IN_H
+#define FFMPEG_GUI_BUILD_CONFIG_H_IN_H
+
+#include <string>
+
+const std::string main_ui = "${DATA_PATH}/main.ui";
+const std::string codecs_file = "${DATA_PATH}/codecs.json";
+
+#endif //FFMPEG_GUI_BUILD_CONFIG_H_IN_H
